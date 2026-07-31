@@ -16,13 +16,12 @@ fn main() -> ExitCode {
 }
 
 fn run(args: Cli) -> Result<ExitCode> {
-    let dir = args.directory.unwrap_or_else(|| {
-        std::env::current_dir().unwrap_or_else(|err| {
-            eprintln!("Error getting current directory {}", err);
-            PathBuf::from(".")
-        })
-    });
-    println!("Current dir:\n {}", dir.display());
+    let dirs: PathBuf = match args.directory {
+        Some(dir) => dir,
+        None => std::env::current_dir().context("Failed to get current directory")?,
+    };
+
+    println!("Current dir:\n {}", dirs.display());
 
     Ok(ExitCode::SUCCESS)
 }
