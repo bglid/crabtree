@@ -16,7 +16,8 @@ fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
 
 /// Builds a path buf until we hit the bottom
 fn walk_path(root: PathBuf) -> Result<PathBuf> {
-    let tree = Tree::new(root);
+    let tree = Tree::build(root)?;
+    // dbg!(&tree.children);
     // let mut stack: Vec<PathBuf> = Vec::new();
     // stack.push(tree.root);
     // let children = (&tree)
@@ -25,11 +26,13 @@ fn walk_path(root: PathBuf) -> Result<PathBuf> {
     //     .map(|path| path.display().to_string())
     //     .collect::<Vec<_>>();
     // stack.push(children);
-    let res: String = (tree)
+    let res: String = (&tree)
         .into_iter()
         .filter(|path| path.is_file())
         .map(|path| path.display().to_string())
         .collect();
+
+    // dbg!(&res);
 
     let path = PathBuf::from(res);
 
