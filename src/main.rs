@@ -15,28 +15,9 @@ fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 /// Builds a path buf until we hit the bottom
-fn walk_path(root: PathBuf) -> Result<PathBuf> {
+fn walk_path(root: PathBuf) -> Result<Vec<PathBuf>> {
     let tree = Tree::build(root)?;
-    // dbg!(&tree.children);
-    // let mut stack: Vec<PathBuf> = Vec::new();
-    // stack.push(tree.root);
-    // let children = (&tree)
-    //     .into_iter()
-    //     .filter(|path| path.is_file())
-    //     .map(|path| path.display().to_string())
-    //     .collect::<Vec<_>>();
-    // stack.push(children);
-    let res: String = (&tree)
-        .into_iter()
-        .filter(|path| path.is_file())
-        .map(|path| path.display().to_string())
-        .collect();
-
-    // dbg!(&res);
-
-    let path = PathBuf::from(res);
-
-    Ok(path)
+    Ok(tree.children)
 }
 
 fn main() -> ExitCode {
@@ -51,10 +32,10 @@ fn main() -> ExitCode {
 
 fn run(args: Cli) -> Result<ExitCode> {
     let dir = resolve_directory(args.directory)?;
-    let tree = walk_path(dir)?;
 
-    // println!("{}", dir.display());
-    println!("{}", tree.display());
+    for child in walk_path(dir)? {
+        println!("{}", child.display())
+    }
 
     Ok(ExitCode::SUCCESS)
 }
