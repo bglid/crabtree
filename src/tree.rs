@@ -1,14 +1,24 @@
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub struct Tree {
     pub root: PathBuf,
     pub children: Vec<PathBuf>,
 }
 
-impl IntoIterator for Tree {
-    type Item = Result<PathBuf>;
+impl Tree {
+    pub fn new<P: AsRef<Path>>(root: P) -> Self {
+        Tree {
+            root: root.as_ref().to_path_buf(),
+            children: { Vec::new() },
+        }
+    }
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        match *self {}
+impl<'a> IntoIterator for &'a Tree {
+    type Item = &'a PathBuf;
+    type IntoIter = std::slice::Iter<'a, PathBuf>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.children.iter()
     }
 }
