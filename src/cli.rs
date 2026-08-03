@@ -5,5 +5,6 @@ use std::path::PathBuf;
 #[command(version, about, long_about = None)]
 pub struct Cli {
     #[arg(short, long)]
+    /// Directory to build tree FROM
     pub directory: Option<PathBuf>,
 }

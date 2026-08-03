@@ -1,15 +1,25 @@
 mod cli;
-use anyhow::{Context, Result};
+mod tree;
+use anyhow::{Context, Ok, Result};
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
 use cli::Cli;
+use tree::Tree;
 
 fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
     match path_buf {
         Some(dir) => Ok(dir),
         None => std::env::current_dir().context("Failed to get current directory"),
     }
+}
+
+/// Builds a path buf until we hit the bottom
+fn walk_path(root: PathBuf) -> Result<PathBuf> {
+    let tree = Tree { root: root };
+    let mut stack = vec![&tree.root];
+
+    unimplemented!();
 }
 
 fn main() -> ExitCode {
@@ -23,9 +33,10 @@ fn main() -> ExitCode {
 }
 
 fn run(args: Cli) -> Result<ExitCode> {
-    let dirs = resolve_directory(args.directory)?;
+    let dir = resolve_directory(args.directory)?;
+    // let tree = walk_path(dir)?;
 
-    println!("Current dir:\n {}", dirs.display());
+    println!("{}", dir.display());
 
     Ok(ExitCode::SUCCESS)
 }
