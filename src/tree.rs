@@ -3,10 +3,6 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-// pub struct Tree {
-//     pub root: PathBuf,
-//     pub children: Vec<PathBuf>,
-// }
 
 pub struct Tree {
     pub root: PathBuf,
@@ -32,9 +28,7 @@ impl Tree {
     pub fn build<P: AsRef<Path>>(root: P) -> Result<Self> {
         let tree = Tree::new(root);
         let children = fs::read_dir(&tree.root)?
-            // .map(|entry| entry.map(|e| e.path()))
             .map(|entry| entry.map(|e| Tree::from_pathbuf(e.path())))
-            // .collect::<std::io::Result<Vec<PathBuf>>>()?;
             .collect::<std::io::Result<Vec<Tree>>>()?;
 
         Ok(Self {
@@ -45,12 +39,41 @@ impl Tree {
 }
 
 impl<'a> IntoIterator for &'a Tree {
-    // type Item = &'a PathBuf;
     type Item = &'a Tree;
-    // type IntoIter = std::slice::Iter<'a, PathBuf>;
     type IntoIter = std::slice::Iter<'a, Tree>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.children.iter()
     }
+}
+
+/// Builds a path buf until we hit the bottom
+pub fn traverse_path(root: PathBuf) -> Result<Tree> {
+    // more like build children immediately and recursively
+    let children: Result<Vec<Tree>, anyhow::Error> =
+        fs::read_dir(&root)?.try_fold(Vec::new(), |mut acc, entry| {
+            let path = entry?.path();
+
+            // check if a dir or something else (will want to improve NOTE: )
+            if path.is_dir() {
+                acc.push(traverse_path(path)?);
+            } else {
+                acc.push(Tree::from_pathbuf(path));
+            }
+            Ok(acc)
+        });
+
+    // build and return full tree
+    Ok(Tree {
+        root,
+        children: children?,
+    })
+}
+
+// should this be impl?
+pub fn print_tree(tree: &Tree, depth: usize) {
+    println!("{}{}", " ".repeat(depth), tree.root.display());
+
+    tree.into_iter()
+        .for_each(|child| print_tree(child, depth + 1));
 }

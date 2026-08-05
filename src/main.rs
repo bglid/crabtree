@@ -5,25 +5,13 @@ use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
 use cli::Cli;
-use tree::Tree;
+// use tree;
 
 fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
     match path_buf {
         Some(dir) => Ok(dir),
         None => std::env::current_dir().context("Failed to get current directory"),
     }
-}
-
-/// Builds a path buf until we hit the bottom
-fn walk_path(root: PathBuf) -> Result<Vec<Tree>> {
-    let tree = Tree::build(root)?;
-    // let mut stack: Vec<PathBuf> = Vec::new();
-
-    // for child in &tree.children {
-    //     let path = Tree::build(child)?;
-    // }
-
-    Ok(tree.children)
 }
 
 fn main() -> ExitCode {
@@ -38,10 +26,17 @@ fn main() -> ExitCode {
 
 fn run(args: Cli) -> Result<ExitCode> {
     let dir = resolve_directory(args.directory)?;
+    let tree = tree::traverse_path(dir)?;
+    // let mut itertree = tree.into_iter();
+    // for item in tree.children {
+    //     println!("{}", item.root.display());
+    // }
 
-    for child in walk_path(dir)? {
-        println!("{}", child.root.display())
-    }
+    // for child in tree::traverse_path(dir)? {
+    //     println!("{}", child.root.display())
+    // }
+
+    tree::print_tree(&tree, 0);
 
     Ok(ExitCode::SUCCESS)
 }
