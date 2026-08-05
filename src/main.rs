@@ -5,6 +5,8 @@ use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
 use cli::Cli;
+
+use crate::tree::Tree;
 // use tree;
 
 fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
@@ -26,15 +28,8 @@ fn main() -> ExitCode {
 
 fn run(args: Cli) -> Result<ExitCode> {
     let dir = resolve_directory(args.directory)?;
-    let tree = tree::traverse_path(dir)?;
-    // let mut itertree = tree.into_iter();
-    // for item in tree.children {
-    //     println!("{}", item.root.display());
-    // }
-
-    // for child in tree::traverse_path(dir)? {
-    //     println!("{}", child.root.display())
-    // }
+    let tree: Tree = Tree::build(dir)?;
+    // tree.display_tree(0);
 
     tree::print_tree(&tree, 0);
 
