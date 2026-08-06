@@ -28,23 +28,17 @@ fn main() -> ExitCode {
 fn run(args: Cli) -> Result<ExitCode> {
     let dir = resolve_directory(args.directory)?;
     let tree: Tree = Tree::build(dir)?;
-    // tree.display_tree(0);
 
-    // tree.display_tree(0);
-    tree.into_iter().for_each(|entry| {
-        dbg!(&entry);
-        match entry {
-            Ok(e) => {
-                dbg!(&e);
-                println!("{}", e.path.display())
+    tree.into_iter().for_each(|entry| match entry {
+        Ok(e) => {
+            if e.depth == 0 {
+                println!("{}{}", "-".repeat(e.depth), e.path.display())
+            } else {
+                println!("{}>{}", "-".repeat(e.depth), e.path.display())
             }
-            Err(e) => println!("{}", e),
         }
+        Err(e) => eprintln!("{}", e),
     });
-    //         self.into_iter().for_each(|entry| match entry {
-    //             Ok(e) => println!("{}>{}", "-".repeat(e.depth), e.path.display()),
-    //             Err(e) => eprintln!("{}", e),
-    //         });
 
     Ok(ExitCode::SUCCESS)
 }

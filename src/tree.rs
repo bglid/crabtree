@@ -6,14 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::tree::TreeList::{Closed, Opened};
-
-// enum TreeNode {
-//     Dir(PathBuf),
-//     File(),
-//     Symlink,
-//     DotDir(PathBuf),
-// }
+// use crate::tree::TreeList::{Closed, Opened};
 
 #[derive(Debug)]
 pub struct Tree {
@@ -24,7 +17,7 @@ pub struct Tree {
 #[derive(Debug)]
 pub struct TreeEntry {
     pub path: PathBuf,
-    pub filetype: FileType,
+    // pub filetype: FileType,
     pub depth: usize,
 }
 
@@ -122,24 +115,44 @@ impl Tree {
 //         });
 // }
 
-#[derive(Debug)]
-enum TreeList {
-    Opened(Result<ReadDir, Option<std::io::Error>>),
-    // Closed(Vec::TreeIter<Result<TreeEntry>>),
-    // Closed(Vec<TreeIter>),
-    Closed(TreeIter),
-}
+// ----- removing for now because adds a ton of unecessary complexity
+// #[derive(Debug)]
+// enum TreeList {
+//     // Opened(Result<ReadDir, Option<std::io::Error>>),
+//     Opened {
+//         depth: usize,
+//         tre: Result<ReadDir, Option<std::io::Error>>,
+//     },
+//     // Closed(Vec::TreeIter<Result<TreeEntry>>),
+//     // Closed(Vec<TreeIter>),
+//     Closed(TreeIter),
+// }
 
-impl Iterator for TreeList {
-    type Item = Result<TreeEntry>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            TreeList::Closed(treeitem) => treeitem.next(),
-            TreeList::Opened(_) => unimplemented!(),
-        }
-    }
-}
+// impl Iterator for TreeList {
+//     type Item = Result<TreeEntry>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         match self {
+//             TreeList::Closed(treeitem) => treeitem.next(),
+//             TreeList::Opened { depth, tre } => match tre {
+//                 Ok(read_dir) => match read_dir.next() {
+//                     Some(dir) => match dir {
+//                         Ok(entry) => Some(Ok(TreeEntry {
+//                             path: entry.path(),
+//                             // NOTE: TODO -> handle getting filetype elsewhere first
+//                             filetype: entry.file_type().expect("NEED TO IMPLEMENT"),
+//                             depth: *depth,
+//                         })),
+//                         Err(err) => unimplemented!(),
+//                     },
+//                     None => None,
+//                 },
+//                 Err(Some(err)) => unimplemented!(),
+//                 Err(None) => None,
+//             },
+//         }
+//     }
+// }
 
 // ----------
 // iter stuff
@@ -148,18 +161,17 @@ impl IntoIterator for Tree {
     type IntoIter = TreeIter;
 
     fn into_iter(self) -> TreeIter {
-        // self.children.iter()
         TreeIter {
-            start: Some(self.root),
-            stack_list: vec![],
+            stack_list: vec![(self, 0)],
         }
     }
 }
 
 #[derive(Debug)]
 pub struct TreeIter {
-    start: Option<PathBuf>,
-    stack_list: Vec<TreeList>,
+    // start: Option<PathBuf>,
+    // stack_list: Vec<TreeList>,
+    stack_list: Vec<(Tree, usize)>,
 }
 
 // Turning treeiter into an actual iterator
@@ -167,27 +179,25 @@ impl Iterator for TreeIter {
     type Item = Result<TreeEntry>;
 
     fn next(&mut self) -> Option<Result<TreeEntry>> {
-        if let Some(start) = self.start.take() {
-            // else for now starting from root
-            Some(std::env::current_dir());
-        }
-        // while loop to pop off the stack and match against result
-        while !self.stack_list.is_empty() {
-            let next = self
-                .stack_list
-                .last_mut()
-                .expect("THE STACK SHOULDNT BE EMPTY!!!")
-                .next();
+        let (tree, depth) = self.stack_list.pop()?;
 
-            match next {
-                None => self.stack_list.pop(),
-                Some(Err(e)) => return Some(Err(e)),
-                Some(Ok(dir)) => return Some(Ok(dir)),
-            };
+        // push the children back on the stack
+        for child in tree.children.into_iter().rev() {
+            self.stack_list.push((child, depth + 1));
         }
-        None
+
+        Some(Ok(TreeEntry {
+            path: tree.root,
+            depth,
+        }))
     }
 }
+
+// impl TreeIter {
+//     pub fn push(&self) -> Self {
+//         self.stack_list
+//     }
+// }
 
 // #[cfg(test)]
 // mod tests {
