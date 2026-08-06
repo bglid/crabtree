@@ -1,13 +1,12 @@
 mod cli;
 mod tree;
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
 use cli::Cli;
 
 use crate::tree::Tree;
-// use tree;
 
 fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
     match path_buf {
@@ -31,7 +30,21 @@ fn run(args: Cli) -> Result<ExitCode> {
     let tree: Tree = Tree::build(dir)?;
     // tree.display_tree(0);
 
-    tree::print_tree(&tree, 0);
+    // tree.display_tree(0);
+    tree.into_iter().for_each(|entry| {
+        dbg!(&entry);
+        match entry {
+            Ok(e) => {
+                dbg!(&e);
+                println!("{}", e.path.display())
+            }
+            Err(e) => println!("{}", e),
+        }
+    });
+    //         self.into_iter().for_each(|entry| match entry {
+    //             Ok(e) => println!("{}>{}", "-".repeat(e.depth), e.path.display()),
+    //             Err(e) => eprintln!("{}", e),
+    //         });
 
     Ok(ExitCode::SUCCESS)
 }
