@@ -8,3 +8,11 @@ pub struct Cli {
     /// Directory to build tree FROM
     pub directory: Option<PathBuf>,
 }
+impl Cli {
+    pub fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
+        match path_buf {
+            Some(dir) => Ok(dir),
+            None => std::env::current_dir().context("Failed to get current directory"),
+        }
+    }
+}
