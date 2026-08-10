@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use cli::Cli;
 
-use crate::tree::Tree;
+use crate::tree::{EntryType, Tree};
 
 fn main() -> ExitCode {
     let args = Cli::parse();
@@ -23,13 +23,23 @@ fn run(args: Cli) -> Result<ExitCode> {
     let tree: Tree = Tree::build(dir)?;
 
     tree.into_iter().for_each(|entry| match entry {
-        Ok(e) => {
-            if e.depth == 0 {
-                println!("{}{}", "-".repeat(e.depth), e.path.display())
-            } else {
-                println!("{}>{}", "-".repeat(e.depth), e.path.display())
+        Ok(e) => match e.entrytype {
+            EntryType::Dir => {
+                if e.depth == 0 {
+                    println!("{}{}", "-".repeat(e.depth), e.path.display())
+                } else {
+                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
+                }
             }
-        }
+            EntryType::File => {
+                if e.depth == 0 {
+                    println!("{}{}", "-".repeat(e.depth), e.path.display())
+                } else {
+                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
+                }
+            }
+            _ => unimplemented!(),
+        },
         Err(e) => eprintln!("{}", e),
     });
 

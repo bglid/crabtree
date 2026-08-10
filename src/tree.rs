@@ -101,97 +101,6 @@ impl Tree {
         })
     }
 
-    // need to fix below NOTE:
-    // pub fn display_tree(&self, depth: usize) {
-    //     println!("{}", self.root.display());
-    //     //     match self.into_iter().next() {
-    //     //         Some(t) => self.print_tree(t, depth),
-    //     //         None => (),
-    //     //     }
-    //     self.into_iter().for_each(|entry| match entry {
-    //         Ok(e) => println!("{}>{}", "-".repeat(e.depth), e.path.display()),
-    //         Err(e) => eprintln!("{}", e),
-    //     });
-    // }
-
-    //
-    // // helps for above- basically higher order function part
-    // fn print_tree(&self, child: TreeIter, depth: usize) {
-    //     println!("{}{}", " ".repeat(depth), child.root.display());
-    //
-    //     self.into_iter()
-    //         .for_each(|child| self.print_tree(child, depth + 1));
-    // }
-
-    // pub fn string_of_paths(self, mut res: Vec<&str>) -> Vec<&str> {
-    //     res.push(
-    //         (self.into_iter().for_each(|child| {
-    //             self.string_of_paths(res);
-    //             child.root.to_str();
-    //         })),
-    //     );
-    //     res
-    // }
-}
-// should this be impl?
-// pub fn print_tree(tree: &Tree, depth: usize) {
-//     println!("{}{}", " ".repeat(depth), tree.root.display());
-//
-//     // tree.into_iter()
-//     //     .for_each(|child| print_tree(child, depth + 1));
-//
-// }
-
-// pub fn print_tree(tree: &Tree, depth: usize) {
-//     println!("{}{}", " ".repeat(depth), tree.root.display());
-//
-//     // tree.into_iter()
-//     //     .for_each(|child| print_tree(child, depth + 1));
-//
-//         self.into_iter().for_each(|entry| match entry {
-//             Ok(e) => println!("{}>{}", "-".repeat(e.depth), e.path.display()),
-//             Err(e) => eprintln!("{}", e),
-//         });
-// }
-
-// ----- removing for now because adds a ton of unecessary complexity
-// #[derive(Debug)]
-// enum TreeList {
-//     // Opened(Result<ReadDir, Option<std::io::Error>>),
-//     Opened {
-//         depth: usize,
-//         tre: Result<ReadDir, Option<std::io::Error>>,
-//     },
-//     // Closed(Vec::TreeIter<Result<TreeEntry>>),
-//     // Closed(Vec<TreeIter>),
-//     Closed(TreeIter),
-// }
-
-// impl Iterator for TreeList {
-//     type Item = Result<TreeEntry>;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         match self {
-//             TreeList::Closed(treeitem) => treeitem.next(),
-//             TreeList::Opened { depth, tre } => match tre {
-//                 Ok(read_dir) => match read_dir.next() {
-//                     Some(dir) => match dir {
-//                         Ok(entry) => Some(Ok(TreeEntry {
-//                             path: entry.path(),
-//                             // NOTE: TODO -> handle getting filetype elsewhere first
-//                             filetype: entry.file_type().expect("NEED TO IMPLEMENT"),
-//                             depth: *depth,
-//                         })),
-//                         Err(err) => unimplemented!(),
-//                     },
-//                     None => None,
-//                 },
-//                 Err(Some(err)) => unimplemented!(),
-//                 Err(None) => None,
-//             },
-//         }
-//     }
-// }
 
 // ----------
 // iter stuff
@@ -239,12 +148,6 @@ impl Iterator for TreeIter {
         }))
     }
 }
-
-// impl TreeIter {
-//     pub fn push(&self) -> Self {
-//         self.stack_list
-//     }
-// }
 
 // #[cfg(test)]
 // mod tests {
