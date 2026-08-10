@@ -2,7 +2,8 @@
 
 use anyhow::Result;
 use std::{
-    fs::{self, FileType, ReadDir},
+    error::Error,
+    fs::{self, FileType, ReadDir, metadata},
     path::{Path, PathBuf},
 };
 
@@ -11,47 +12,84 @@ use std::{
 #[derive(Debug)]
 pub struct Tree {
     pub root: PathBuf,
+    pub etype: EntryType,
     pub children: Vec<Tree>,
+}
+
+#[derive(Debug)]
+pub enum EntryType {
+    Dir,
+    File,
+    SymL,
+    Other,
+}
+
+impl From<FileType> for EntryType {
+    fn from(value: FileType) -> Self {
+        if value.is_dir() {
+            Self::Dir
+        } else if value.is_file() {
+            Self::File
+        } else if value.is_symlink() {
+            Self::SymL
+        } else {
+            Self::Other
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct TreeEntry {
     pub path: PathBuf,
-    // pub filetype: FileType,
+    pub entrytype: EntryType,
     pub depth: usize,
+    pub dotfile: bool,
 }
 
 impl Tree {
-    pub fn new<P: AsRef<Path>>(root: P) -> Self {
+    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Self {
         Tree {
             root: root.as_ref().to_path_buf(),
             children: { Vec::new() },
+            etype: entry_type,
         }
     }
 
-    pub fn from_pathbuf(root: PathBuf) -> Self {
+    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
         Tree {
             root,
             children: Vec::new(),
+            etype: entry_type,
         }
     }
 
     pub fn build<P: AsRef<Path>>(root: P) -> Result<Self> {
-        Self::traverse_build(root.as_ref().to_path_buf())
+        let metadata = fs::metadata(&root)?;
+        let ft = metadata.file_type();
+        Self::traverse_build(root.as_ref().to_path_buf(), EntryType::from(ft))
     }
 
     /// Private tree traversal
-    fn traverse_build(root: PathBuf) -> Result<Self> {
+    fn traverse_build(root: PathBuf, ty: EntryType) -> Result<Self> {
         let children: Result<Vec<Tree>, anyhow::Error> =
             fs::read_dir(&root)?.try_fold(Vec::new(), |mut acc, entry| {
-                let path = entry?.path();
+                let entry = entry?;
+                // new Entry type for next level
+                let entry_ty = EntryType::from(entry.file_type()?);
 
-                // check if a dir or something else (will want to improve NOTE: )
-                if path.is_dir() {
-                    acc.push(Self::traverse_build(path)?);
-                } else {
-                    acc.push(Tree::from_pathbuf(path));
+                let path = entry.path();
+
+                match entry_ty {
+                    EntryType::Dir => {
+                        acc.push(Self::traverse_build(path, entry_ty)?);
+                    }
+                    EntryType::File => {
+                        acc.push(Self::from_pathbuf(path, entry_ty));
+                    }
+                    EntryType::SymL => unimplemented!(),
+                    EntryType::Other => unimplemented!(),
                 }
+
                 Ok(acc)
             });
 
@@ -59,6 +97,7 @@ impl Tree {
         Ok(Self {
             root,
             children: children?,
+            etype: ty,
         })
     }
 
@@ -181,6 +220,12 @@ impl Iterator for TreeIter {
     fn next(&mut self) -> Option<Result<TreeEntry>> {
         let (tree, depth) = self.stack_list.pop()?;
 
+        // skipping if dotfile
+        // let dot = match tree.root.to_str()?.chars().next() {
+        //     Some(first) => true,
+        //     _ => false,
+        // };
+
         // push the children back on the stack
         for child in tree.children.into_iter().rev() {
             self.stack_list.push((child, depth + 1));
@@ -189,6 +234,8 @@ impl Iterator for TreeIter {
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
+            entrytype: tree.etype,
+            dotfile: false,
         }))
     }
 }

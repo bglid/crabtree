@@ -1,7 +1,7 @@
 mod cli;
 mod tree;
-use anyhow::{Context, Result};
-use std::{path::PathBuf, process::ExitCode};
+use anyhow::Result;
+use std::process::ExitCode;
 
 use clap::Parser;
 use cli::Cli;
@@ -40,6 +40,7 @@ fn run(args: Cli) -> Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn uses_dir_from_arg() {
