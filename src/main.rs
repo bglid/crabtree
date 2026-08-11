@@ -25,6 +25,7 @@ fn run(args: Cli) -> Result<ExitCode> {
     tree.into_iter().for_each(|entry| match entry {
         Ok(e) => match e.entrytype {
             EntryType::Dir => {
+                // dbg!(&e);
                 if e.depth == 0 {
                     println!("{}{}", "-".repeat(e.depth), e.path.display())
                 } else {
@@ -32,6 +33,7 @@ fn run(args: Cli) -> Result<ExitCode> {
                 }
             }
             EntryType::File => {
+                // dbg!(&e);
                 if e.depth == 0 {
                     println!("{}{}", "-".repeat(e.depth), e.path.display())
                 } else {

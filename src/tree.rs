@@ -3,6 +3,7 @@
 use anyhow::Result;
 use std::{
     error::Error,
+    fmt,
     fs::{self, FileType, ReadDir, metadata},
     path::{Path, PathBuf},
 };
@@ -38,7 +39,7 @@ impl From<FileType> for EntryType {
     }
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
@@ -55,7 +56,33 @@ impl Tree {
         }
     }
 
+    /// Handles pathbuf and turns to path, returning the final file
     pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
+        match entry_type {
+            EntryType::File => {
+                let p = root.file_name();
+                match p {
+                    Some(f) => {
+                        return Tree {
+                            root: PathBuf::from(f),
+                            children: Vec::new(),
+                            etype: entry_type,
+                        };
+                    }
+                    None => {
+                        println!("Error getting filename");
+                        return Tree {
+                            root,
+                            children: Vec::new(),
+                            etype: entry_type,
+                        };
+                    }
+                };
+            }
+            EntryType::Dir => println!("Trying to get pathbuf from dir..."),
+            EntryType::SymL => println!("Trying to get pathbuf from symlink..."),
+            EntryType::Other => println!("Trying to get pathbuf from something else?"),
+        }
         Tree {
             root,
             children: Vec::new(),
@@ -100,7 +127,7 @@ impl Tree {
             etype: ty,
         })
     }
-
+}
 
 // ----------
 // iter stuff
@@ -146,6 +173,12 @@ impl Iterator for TreeIter {
             entrytype: tree.etype,
             dotfile: false,
         }))
+    }
+}
+
+impl fmt::Debug for TreeEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TreeEntry::{:?} => ({:?})", self.entrytype, self.path)
     }
 }
 
