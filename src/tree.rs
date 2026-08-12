@@ -1,14 +1,12 @@
 #![allow(unused)]
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use std::{
     error::Error,
     fmt,
     fs::{self, FileType, ReadDir, metadata},
     path::{Path, PathBuf},
 };
-
-// use crate::tree::TreeList::{Closed, Opened};
 
 #[derive(Debug)]
 pub struct Tree {
@@ -44,7 +42,6 @@ pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
     pub depth: usize,
-    pub dotfile: bool,
 }
 
 impl Tree {
@@ -96,29 +93,49 @@ impl Tree {
         Self::traverse_build(root.as_ref().to_path_buf(), EntryType::from(ft))
     }
 
+    fn is_dot(path: &PathBuf) -> bool {
+        let p = path.as_path();
+        p.file_name()
+            .and_then(|name| name.to_str())
+            .map(|st| st.starts_with("."))
+            .unwrap_or_else(|| false)
+    }
+
+    fn get_children(root: &PathBuf) -> Result<Vec<Self>> {
+        fs::read_dir(root)?.try_fold(Vec::new(), |mut acc, entry| {
+            let entry = entry?;
+            // new Entry type for next level
+            let entry_ty = EntryType::from(entry.file_type()?);
+
+            let path = entry.path();
+
+            match entry_ty {
+                EntryType::Dir => {
+                    acc.push(Self::traverse_build(path, entry_ty)?);
+                }
+                EntryType::File => {
+                    acc.push(Self::from_pathbuf(path, entry_ty));
+                }
+                EntryType::SymL => unimplemented!(),
+                EntryType::Other => unimplemented!(),
+            }
+
+            Ok(acc)
+        })
+    }
+
     /// Private tree traversal
     fn traverse_build(root: PathBuf, ty: EntryType) -> Result<Self> {
-        let children: Result<Vec<Tree>, anyhow::Error> =
-            fs::read_dir(&root)?.try_fold(Vec::new(), |mut acc, entry| {
-                let entry = entry?;
-                // new Entry type for next level
-                let entry_ty = EntryType::from(entry.file_type()?);
-
-                let path = entry.path();
-
-                match entry_ty {
-                    EntryType::Dir => {
-                        acc.push(Self::traverse_build(path, entry_ty)?);
-                    }
-                    EntryType::File => {
-                        acc.push(Self::from_pathbuf(path, entry_ty));
-                    }
-                    EntryType::SymL => unimplemented!(),
-                    EntryType::Other => unimplemented!(),
-                }
-
-                Ok(acc)
+        // checking for dotfile or dotdir to skip building the tree
+        if Self::is_dot(&root) {
+            return Ok(Tree {
+                root,
+                etype: ty,
+                children: Vec::new(),
             });
+        };
+
+        let children = Self::get_children(&root);
 
         // build and return full tree
         Ok(Self {
@@ -144,8 +161,6 @@ impl IntoIterator for Tree {
 
 #[derive(Debug)]
 pub struct TreeIter {
-    // start: Option<PathBuf>,
-    // stack_list: Vec<TreeList>,
     stack_list: Vec<(Tree, usize)>,
 }
 
@@ -156,12 +171,6 @@ impl Iterator for TreeIter {
     fn next(&mut self) -> Option<Result<TreeEntry>> {
         let (tree, depth) = self.stack_list.pop()?;
 
-        // skipping if dotfile
-        // let dot = match tree.root.to_str()?.chars().next() {
-        //     Some(first) => true,
-        //     _ => false,
-        // };
-
         // push the children back on the stack
         for child in tree.children.into_iter().rev() {
             self.stack_list.push((child, depth + 1));
@@ -171,7 +180,6 @@ impl Iterator for TreeIter {
             path: tree.root,
             depth,
             entrytype: tree.etype,
-            dotfile: false,
         }))
     }
 }

@@ -8,6 +8,10 @@ pub struct Cli {
     #[arg(short, long)]
     /// Directory to build tree FROM
     pub directory: Option<PathBuf>,
+
+    /// Directories to ignore
+    #[arg(short = 'I', long = "ignore-dir")]
+    pub ignore: Vec<String>,
 }
 impl Cli {
     pub fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {

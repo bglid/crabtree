@@ -22,28 +22,37 @@ fn run(args: Cli) -> Result<ExitCode> {
     let dir = Cli::resolve_directory(args.directory)?;
     let tree: Tree = Tree::build(dir)?;
 
-    tree.into_iter().for_each(|entry| match entry {
-        Ok(e) => match e.entrytype {
-            EntryType::Dir => {
-                // dbg!(&e);
-                if e.depth == 0 {
-                    println!("{}{}", "-".repeat(e.depth), e.path.display())
-                } else {
-                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
+    tree.into_iter()
+        // .filter(|e| {
+        //     args.ignore
+        //         .iter()
+        //         // THIS NEEDS TO VCHANGE!!!!
+        //         .any(|ignores| {
+        //             !ignores.starts_with(&String::from(e.as_ref().unwrap().path.to_str().unwrap()))
+        //         })
+        // })
+        .for_each(|entry| match entry {
+            Ok(e) => match e.entrytype {
+                EntryType::Dir => {
+                    // dbg!(&e);
+                    if e.depth == 0 {
+                        println!("{}{}", "-".repeat(e.depth), e.path.display())
+                    } else {
+                        println!("{}-{}", "-".repeat(e.depth), e.path.display())
+                    }
                 }
-            }
-            EntryType::File => {
-                // dbg!(&e);
-                if e.depth == 0 {
-                    println!("{}{}", "-".repeat(e.depth), e.path.display())
-                } else {
-                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
+                EntryType::File => {
+                    // dbg!(&e);
+                    if e.depth == 0 {
+                        println!("{}{}", "-".repeat(e.depth), e.path.display())
+                    } else {
+                        println!("{}>{}", "-".repeat(e.depth), e.path.display())
+                    }
                 }
-            }
-            _ => unimplemented!(),
-        },
-        Err(e) => eprintln!("{}", e),
-    });
+                _ => unimplemented!(),
+            },
+            Err(e) => eprintln!("{}", e),
+        });
 
     Ok(ExitCode::SUCCESS)
 }
