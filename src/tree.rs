@@ -15,7 +15,7 @@ pub struct Tree {
     pub children: Vec<Tree>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EntryType {
     Dir,
     File,
@@ -150,7 +150,6 @@ impl Tree {
             });
         };
 
-        // NOTE: Need to refactor away from clones
         if let Some(ref flag) = ignore_flag {
             if flag.iter().any(|f| Self::ignore_dir(&root, f.to_string())) {
                 return Ok(Tree {
@@ -162,6 +161,32 @@ impl Tree {
         }
 
         let children = Self::get_children(&root, ignore_flag);
+
+        // NOTE: Trying to improve getting dir
+        // NOTE: Refactor to it's own function because this is used in many places
+        if ty == EntryType::Dir {
+            // let cleaned_root: PathBuf = PathBuf::from(if Some(r) = root.file_name() {
+            //     root
+            // });
+            let Some(os_root) = root.file_name() else {
+                return Ok(Self {
+                    root,
+                    children: children?,
+                    etype: ty,
+                });
+            };
+
+            return Ok(Self {
+                root: PathBuf::from(os_root),
+                children: children?,
+                etype: ty,
+            });
+            // if let Some(os_root) = root.file_name() {
+            //     let cleaned_root = PathBuf::from(os_root);
+            // }
+
+            // NOTE: Need to replicate above for ignored and dot dirs
+        }
 
         // build and return full tree
         Ok(Self {
