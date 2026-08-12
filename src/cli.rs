@@ -11,7 +11,7 @@ pub struct Cli {
 
     /// Directories to ignore
     #[arg(short = 'I', long = "ignore-dir")]
-    pub ignore: Vec<String>,
+    pub ignore: Option<Vec<String>>,
 }
 impl Cli {
     pub fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {

@@ -87,21 +87,31 @@ impl Tree {
         }
     }
 
-    pub fn build<P: AsRef<Path>>(root: P) -> Result<Self> {
+    pub fn build<P: AsRef<Path>>(root: P, ignore_flag: Option<Vec<String>>) -> Result<Self> {
         let metadata = fs::metadata(&root)?;
         let ft = metadata.file_type();
-        Self::traverse_build(root.as_ref().to_path_buf(), EntryType::from(ft))
+        Self::traverse_build(
+            root.as_ref().to_path_buf(),
+            EntryType::from(ft),
+            ignore_flag,
+        )
     }
 
-    fn is_dot(path: &PathBuf) -> bool {
-        let p = path.as_path();
-        p.file_name()
+    fn is_dot(path: &Path) -> bool {
+        path.file_name()
             .and_then(|name| name.to_str())
-            .map(|st| st.starts_with("."))
+            .map(|s| s.starts_with("."))
             .unwrap_or_else(|| false)
     }
 
-    fn get_children(root: &PathBuf) -> Result<Vec<Self>> {
+    fn ignore_dir(path: &Path, ignore_flag: String) -> bool {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .map(|s| s == ignore_flag)
+            .unwrap_or_else(|| false)
+    }
+
+    fn get_children(root: &PathBuf, ignore_flag: Option<Vec<String>>) -> Result<Vec<Self>> {
         fs::read_dir(root)?.try_fold(Vec::new(), |mut acc, entry| {
             let entry = entry?;
             // new Entry type for next level
@@ -109,9 +119,10 @@ impl Tree {
 
             let path = entry.path();
 
+            // NOTE: Need to refactor away from clones
             match entry_ty {
                 EntryType::Dir => {
-                    acc.push(Self::traverse_build(path, entry_ty)?);
+                    acc.push(Self::traverse_build(path, entry_ty, ignore_flag.clone())?);
                 }
                 EntryType::File => {
                     acc.push(Self::from_pathbuf(path, entry_ty));
@@ -125,7 +136,11 @@ impl Tree {
     }
 
     /// Private tree traversal
-    fn traverse_build(root: PathBuf, ty: EntryType) -> Result<Self> {
+    fn traverse_build(
+        root: PathBuf,
+        ty: EntryType,
+        ignore_flag: Option<Vec<String>>,
+    ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
         if Self::is_dot(&root) {
             return Ok(Tree {
@@ -135,7 +150,18 @@ impl Tree {
             });
         };
 
-        let children = Self::get_children(&root);
+        // NOTE: Need to refactor away from clones
+        if let Some(ref flag) = ignore_flag {
+            if flag.iter().any(|f| Self::ignore_dir(&root, f.to_string())) {
+                return Ok(Tree {
+                    root,
+                    etype: ty,
+                    children: Vec::new(),
+                });
+            }
+        }
+
+        let children = Self::get_children(&root, ignore_flag);
 
         // build and return full tree
         Ok(Self {

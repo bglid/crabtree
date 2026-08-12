@@ -20,7 +20,7 @@ fn main() -> ExitCode {
 
 fn run(args: Cli) -> Result<ExitCode> {
     let dir = Cli::resolve_directory(args.directory)?;
-    let tree: Tree = Tree::build(dir)?;
+    let tree: Tree = Tree::build(dir, args.ignore)?;
 
     tree.into_iter()
         // .filter(|e| {
