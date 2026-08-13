@@ -10,7 +10,7 @@ pub struct Cli {
     pub directory: Option<PathBuf>,
 
     /// Directories to ignore
-    #[arg(short = 'I', long = "ignore-dir")]
+    #[arg(short = 'I', long = "ignore-dir", num_args = 1.., value_delimiter = ',')]
     pub ignore: Option<Vec<String>>,
 }
 impl Cli {
