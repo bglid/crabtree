@@ -1,24 +1,12 @@
 mod cli;
 mod tree;
-use anyhow::{Context, Ok, Result};
-use std::{path::PathBuf, process::ExitCode};
+use anyhow::Result;
+use std::process::ExitCode;
 
 use clap::Parser;
 use cli::Cli;
-use tree::Tree;
 
-fn resolve_directory(path_buf: Option<PathBuf>) -> Result<PathBuf> {
-    match path_buf {
-        Some(dir) => Ok(dir),
-        None => std::env::current_dir().context("Failed to get current directory"),
-    }
-}
-
-/// Builds a path buf until we hit the bottom
-fn walk_path(root: PathBuf) -> Result<Vec<PathBuf>> {
-    let tree = Tree::build(root)?;
-    Ok(tree.children)
-}
+use crate::tree::{EntryType, Tree};
 
 fn main() -> ExitCode {
     let args = Cli::parse();
@@ -31,11 +19,31 @@ fn main() -> ExitCode {
 }
 
 fn run(args: Cli) -> Result<ExitCode> {
-    let dir = resolve_directory(args.directory)?;
+    let dir = Cli::resolve_directory(args.directory)?;
+    let tree: Tree = Tree::build(dir, args.ignore)?;
 
-    for child in walk_path(dir)? {
-        println!("{}", child.display())
-    }
+    tree.into_iter().for_each(|entry| match entry {
+        Ok(e) => match e.entrytype {
+            EntryType::Dir => {
+                // dbg!(&e);
+                if e.depth == 0 {
+                    println!("{}{}", "-".repeat(e.depth), e.path.display())
+                } else {
+                    println!("{}-{}", "-".repeat(e.depth), e.path.display())
+                }
+            }
+            EntryType::File => {
+                // dbg!(&e);
+                if e.depth == 0 {
+                    println!("{}{}", "-".repeat(e.depth), e.path.display())
+                } else {
+                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
+                }
+            }
+            _ => unimplemented!(),
+        },
+        Err(e) => eprintln!("{}", e),
+    });
 
     Ok(ExitCode::SUCCESS)
 }
@@ -44,12 +52,13 @@ fn run(args: Cli) -> Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn uses_dir_from_arg() {
         let expected_dir = PathBuf::from("/test/hello");
 
-        let actual = resolve_directory(Some(expected_dir.clone()))
+        let actual = Cli::resolve_directory(Some(expected_dir.clone()))
             .unwrap_or_else(|_err| panic!("Failure in resolving path"));
         assert_eq!(actual, expected_dir)
     }
@@ -57,7 +66,7 @@ mod tests {
     #[test]
     fn uses_cd_when_no_arg() {
         let expected_dir = std::env::current_dir().expect("Error in getting cd");
-        let actual = resolve_directory(None).expect("Error in resolving directory");
+        let actual = Cli::resolve_directory(None).expect("Error in resolving directory");
         assert_eq!(actual, expected_dir)
     }
 }
