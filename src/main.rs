@@ -1,12 +1,15 @@
 mod cli;
 mod tree;
+mod viz;
 use anyhow::Result;
 use std::process::ExitCode;
 
 use clap::Parser;
 use cli::Cli;
 
-use crate::tree::{EntryType, Tree};
+use viz::visualize_tree;
+
+use crate::tree::Tree;
 
 fn main() -> ExitCode {
     let args = Cli::parse();
@@ -22,28 +25,30 @@ fn run(args: Cli) -> Result<ExitCode> {
     let dir = Cli::resolve_directory(args.directory)?;
     let tree: Tree = Tree::build(dir, args.ignore)?;
 
-    tree.into_iter().for_each(|entry| match entry {
-        Ok(e) => match e.entrytype {
-            EntryType::Dir => {
-                // dbg!(&e);
-                if e.depth == 0 {
-                    println!("{}{}", "-".repeat(e.depth), e.path.display())
-                } else {
-                    println!("{}-{}", "-".repeat(e.depth), e.path.display())
-                }
-            }
-            EntryType::File => {
-                // dbg!(&e);
-                if e.depth == 0 {
-                    println!("{}{}", "-".repeat(e.depth), e.path.display())
-                } else {
-                    println!("{}>{}", "-".repeat(e.depth), e.path.display())
-                }
-            }
-            _ => unimplemented!(),
-        },
-        Err(e) => eprintln!("{}", e),
-    });
+    visualize_tree(tree);
+
+    // tree.into_iter().for_each(|entry| match entry {
+    //     Ok(e) => match e.entrytype {
+    //         EntryType::Dir => {
+    //             // dbg!(&e);
+    //             if e.depth == 0 {
+    //                 println!("{}{}", "-".repeat(e.depth), e.path.display())
+    //             } else {
+    //                 println!("{}-{}", "-".repeat(e.depth), e.path.display())
+    //             }
+    //         }
+    //         EntryType::File => {
+    //             // dbg!(&e);
+    //             if e.depth == 0 {
+    //                 println!("{}{}", "-".repeat(e.depth), e.path.display())
+    //             } else {
+    //                 println!("{}>{}", "-".repeat(e.depth), e.path.display())
+    //             }
+    //         }
+    //         _ => unimplemented!(),
+    //     },
+    //     Err(e) => eprintln!("{}", e),
+    // });
 
     Ok(ExitCode::SUCCESS)
 }
