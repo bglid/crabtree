@@ -135,7 +135,22 @@ impl Tree {
         })
     }
 
-    /// Private tree traversal
+    fn return_last_path(root: PathBuf, children: Vec<Self>, ty: EntryType) -> Result<Self> {
+        let Some(os_root) = root.file_name() else {
+            return Ok(Self {
+                root,
+                etype: ty,
+                children,
+            });
+        };
+        Ok(Self {
+            root: PathBuf::from(os_root),
+            etype: ty,
+            children,
+        })
+    }
+
+    // Private tree traversal
     fn traverse_build(
         root: PathBuf,
         ty: EntryType,
@@ -143,21 +158,18 @@ impl Tree {
     ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
         if Self::is_dot(&root) {
-            return Ok(Tree {
-                root,
-                etype: ty,
-                children: Vec::new(),
-            });
+            return Self::return_last_path(root, Vec::new(), ty);
+            // return Ok(Tree {
+            //     root,
+            //     etype: ty,
+            //     children: Vec::new(),
+            // });
         };
 
-        if let Some(ref flag) = ignore_flag {
-            if flag.iter().any(|f| Self::ignore_dir(&root, f.to_string())) {
-                return Ok(Tree {
-                    root,
-                    etype: ty,
-                    children: Vec::new(),
-                });
-            }
+        if let Some(ref flag) = ignore_flag
+            && flag.iter().any(|f| Self::ignore_dir(&root, f.to_string()))
+        {
+            return Self::return_last_path(root, Vec::new(), ty);
         }
 
         let children = Self::get_children(&root, ignore_flag);
@@ -168,19 +180,22 @@ impl Tree {
             // let cleaned_root: PathBuf = PathBuf::from(if Some(r) = root.file_name() {
             //     root
             // });
-            let Some(os_root) = root.file_name() else {
-                return Ok(Self {
-                    root,
-                    children: children?,
-                    etype: ty,
-                });
-            };
 
-            return Ok(Self {
-                root: PathBuf::from(os_root),
-                children: children?,
-                etype: ty,
-            });
+            return Self::return_last_path(root, children?, ty);
+
+            // let Some(os_root) = root.file_name() else {
+            //     return Ok(Self {
+            //         root,
+            //         children: children?,
+            //         etype: ty,
+            //     });
+            // };
+            //
+            // return Ok(Self {
+            //     root: PathBuf::from(os_root),
+            //     children: children?,
+            //     etype: ty,
+            // });
             // if let Some(os_root) = root.file_name() {
             //     let cleaned_root = PathBuf::from(os_root);
             // }
