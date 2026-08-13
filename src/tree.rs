@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Tree {
     pub root: PathBuf,
     pub etype: EntryType,
@@ -135,6 +135,7 @@ impl Tree {
         })
     }
 
+    // Returns just the last file in a path
     fn return_last_path(root: PathBuf, children: Vec<Self>, ty: EntryType) -> Result<Self> {
         let Some(os_root) = root.file_name() else {
             return Ok(Self {
@@ -159,11 +160,6 @@ impl Tree {
         // checking for dotfile or dotdir to skip building the tree
         if Self::is_dot(&root) {
             return Self::return_last_path(root, Vec::new(), ty);
-            // return Ok(Tree {
-            //     root,
-            //     etype: ty,
-            //     children: Vec::new(),
-            // });
         };
 
         if let Some(ref flag) = ignore_flag
@@ -174,33 +170,9 @@ impl Tree {
 
         let children = Self::get_children(&root, ignore_flag);
 
-        // NOTE: Trying to improve getting dir
-        // NOTE: Refactor to it's own function because this is used in many places
+        // handles just returning last dir
         if ty == EntryType::Dir {
-            // let cleaned_root: PathBuf = PathBuf::from(if Some(r) = root.file_name() {
-            //     root
-            // });
-
             return Self::return_last_path(root, children?, ty);
-
-            // let Some(os_root) = root.file_name() else {
-            //     return Ok(Self {
-            //         root,
-            //         children: children?,
-            //         etype: ty,
-            //     });
-            // };
-            //
-            // return Ok(Self {
-            //     root: PathBuf::from(os_root),
-            //     children: children?,
-            //     etype: ty,
-            // });
-            // if let Some(os_root) = root.file_name() {
-            //     let cleaned_root = PathBuf::from(os_root);
-            // }
-
-            // NOTE: Need to replicate above for ignored and dot dirs
         }
 
         // build and return full tree
@@ -256,19 +228,32 @@ impl fmt::Debug for TreeEntry {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn traverses_dir() ->  {
-//         let expected_tree = Tree {
-//             root: PathBuf::from("./")
-//             children: vec![Tree]
-//         };
-//     }
-//
-//     #[test]
-//     fn skips_dot_dirs() {
-//     }
-// }
+// these tests are trash atm
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_tree() -> Result<Tree> {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tree");
+        Tree::build(path, None)
+    }
+
+    #[test]
+    fn traverses_dir() {
+        let tree = create_tree().unwrap();
+        assert!(tree.children.iter().any(|c| c.root.ends_with("hello.rs")));
+        assert!(tree.children.iter().any(|c| c.root.ends_with("subdir")));
+    }
+
+    #[test]
+    fn skips_trav_dot_dirs() {
+        let tree = create_tree().unwrap();
+        assert!(tree.children.iter().any(|c| c.root.ends_with(".im_hiding")));
+        assert!(
+            !tree
+                .children
+                .iter()
+                .any(|c| c.root.ends_with("dont_look_at_me.rs"))
+        );
+    }
+}
