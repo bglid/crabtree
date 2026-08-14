@@ -42,6 +42,7 @@ pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
     pub depth: usize,
+    pub last_entry: bool,
 }
 
 impl Tree {
@@ -192,14 +193,14 @@ impl IntoIterator for Tree {
 
     fn into_iter(self) -> TreeIter {
         TreeIter {
-            stack_list: vec![(self, 0)],
+            stack_list: vec![(self, 0, false)],
         }
     }
 }
 
 #[derive(Debug)]
 pub struct TreeIter {
-    stack_list: Vec<(Tree, usize)>,
+    stack_list: Vec<(Tree, usize, bool)>,
 }
 
 // Turning treeiter into an actual iterator
@@ -207,17 +208,25 @@ impl Iterator for TreeIter {
     type Item = Result<TreeEntry>;
 
     fn next(&mut self) -> Option<Result<TreeEntry>> {
-        let (tree, depth) = self.stack_list.pop()?;
+        let (tree, depth, is_last) = self.stack_list.pop()?;
+
+        // checking for last item
+        let mut last: bool = false;
+        let len: usize = tree.children.len();
+        if self.stack_list.len() >= len {
+            last = true;
+        }
 
         // push the children back on the stack
         for child in tree.children.into_iter().rev() {
-            self.stack_list.push((child, depth + 1));
+            self.stack_list.push((child, depth + 1, last));
         }
 
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
             entrytype: tree.etype,
+            last_entry: last,
         }))
     }
 }
