@@ -211,15 +211,16 @@ impl Iterator for TreeIter {
         let (tree, depth, is_last) = self.stack_list.pop()?;
 
         // checking for last item
+        // NOTE: HOW DO I GET THIS CORRECT?
         let mut last: bool = false;
         let len: usize = tree.children.len();
-        if self.stack_list.len() >= len {
+        if self.stack_list.len() <= len {
             last = true;
         }
 
         // push the children back on the stack
         for child in tree.children.into_iter().rev() {
-            self.stack_list.push((child, depth + 1, last));
+            self.stack_list.push((child, depth + 1, is_last));
         }
 
         Some(Ok(TreeEntry {
