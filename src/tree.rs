@@ -37,10 +37,10 @@ impl From<FileType> for EntryType {
     }
 }
 
-// #[derive(Debug)]
 pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
+    // pub ancestor_depth: usize,
     pub depth: usize,
     pub last_entry: bool,
 }
@@ -194,6 +194,9 @@ impl IntoIterator for Tree {
     fn into_iter(self) -> TreeIter {
         TreeIter {
             stack_list: vec![(self, 0, false)],
+            stack_path: vec![],
+            // min_depth: self.min_depth
+            // max_depth: self.max_depth
         }
     }
 }
@@ -201,6 +204,7 @@ impl IntoIterator for Tree {
 #[derive(Debug)]
 pub struct TreeIter {
     stack_list: Vec<(Tree, usize, bool)>,
+    stack_path: Vec<Ancestor>,
 }
 
 // Turning treeiter into an actual iterator
@@ -219,9 +223,12 @@ impl Iterator for TreeIter {
             }
         }
 
+        // self.stack_path.push(Ancestor::new(tree.root));
+
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
+            // ancestor_depth: a_depth,
             entrytype: tree.etype,
             last_entry: is_last,
         }))
@@ -231,6 +238,18 @@ impl Iterator for TreeIter {
 impl fmt::Debug for TreeEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "TreeEntry::{:?} => ({:?})", self.entrytype, self.path)
+    }
+}
+
+/// Ancestor for tracking previous entries
+#[derive(Debug)]
+struct Ancestor {
+    path: PathBuf,
+}
+
+impl Ancestor {
+    fn new(entry: TreeEntry) -> Result<Self> {
+        Ok(Self { path: entry.path })
     }
 }
 

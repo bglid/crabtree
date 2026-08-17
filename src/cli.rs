@@ -5,12 +5,12 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    #[arg(short, long)]
+    #[arg(short = 'd', long = "directory")]
     /// Directory to build tree FROM
     pub directory: Option<PathBuf>,
 
     /// Directories to ignore
-    #[arg(short = 'I', long = "ignore-dir", num_args = 1.., value_delimiter = ',')]
+    #[arg(short = 'i', long = "ignore-dir", num_args = 1.., value_delimiter = ',')]
     pub ignore: Option<Vec<String>>,
 }
 impl Cli {
