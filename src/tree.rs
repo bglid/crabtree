@@ -210,24 +210,20 @@ impl Iterator for TreeIter {
     fn next(&mut self) -> Option<Result<TreeEntry>> {
         let (tree, depth, is_last) = self.stack_list.pop()?;
 
-        // checking for last item
-        // NOTE: HOW DO I GET THIS CORRECT?
-        let mut last: bool = false;
-        let len: usize = tree.children.len();
-        if self.stack_list.len() <= len {
-            last = true;
-        }
-
         // push the children back on the stack
-        for child in tree.children.into_iter().rev() {
-            self.stack_list.push((child, depth + 1, is_last));
+        for (i, child) in tree.children.into_iter().rev().enumerate() {
+            if i == 0 {
+                self.stack_list.push((child, depth + 1, true));
+            } else {
+                self.stack_list.push((child, depth + 1, false));
+            }
         }
 
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
             entrytype: tree.etype,
-            last_entry: last,
+            last_entry: is_last,
         }))
     }
 }
