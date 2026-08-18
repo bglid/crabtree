@@ -2,7 +2,6 @@ use crate::{
     tree::{EntryType, Tree, TreeEntry, TreeIter},
     viz::TreePart::{FinalFile, TreeBranch, TreeFile},
 };
-use anyhow::Result;
 
 // better visualizing chars
 const BRANCH: char = '├';
@@ -32,13 +31,27 @@ impl TreePart {
         }
     }
 
+    fn print_ancestors(&self, e: &TreeEntry) {
+        for anc in 0..e.depth {
+            if anc == 0 {
+                continue;
+            }
+            if anc <= e.ancestors {
+                print!("{}{}", " ".repeat(anc), VERT);
+            } else {
+                print!("{}", "  ".repeat(anc));
+            }
+        }
+    }
+
     fn print_tree_part(&self, e: &TreeEntry) {
         match self {
             TreeBranch => {
                 if e.depth > 0 {
+                    self.print_ancestors(e);
                     println!(
                         "{}{}{}{}/",
-                        "  ".repeat(e.depth),
+                        " ".repeat(e.depth),
                         BRANCH,
                         HOR,
                         e.path.display()
@@ -48,22 +61,18 @@ impl TreePart {
                 }
             }
             TreeFile => {
+                self.print_ancestors(e);
                 println!(
                     "{}{}{}{}",
-                    "  ".repeat(e.depth),
+                    " ".repeat(e.depth),
                     BRANCH,
                     HOR,
                     e.path.display()
                 )
             }
             FinalFile => {
-                println!(
-                    "{}{}{}{}",
-                    "  ".repeat(e.depth),
-                    LEAF,
-                    HOR,
-                    e.path.display()
-                )
+                self.print_ancestors(e);
+                println!("{}{}{}{}", " ".repeat(e.depth), LEAF, HOR, e.path.display())
             }
         }
     }
@@ -75,6 +84,7 @@ pub fn visualize_tree(tree: Tree) {
         match t_ent {
             Ok(e) => {
                 let part = TreePart::resolve_part(&e);
+                // part.print_ancestors(&e);
                 part.print_tree_part(&e);
             }
             Err(e) => eprintln!("{}", e),
