@@ -32,19 +32,19 @@ impl TreePart {
     }
 
     fn print_ancestors(&self, e: &TreeEntry) {
-        for anc in 0..e.depth {
+        for anc in 0..e.ancestor.depth {
             if anc == 0 {
                 continue;
             }
-            if !e.last_entry {
-                print!("{}{}", " ".repeat(anc.saturating_sub(1)), VERT);
+            if e.ancestor.has_sibling {
+                print!("{}{}", " ".repeat(e.ancestor.depth), VERT);
             } else {
                 // print!("{}{}{}", "  ".repeat(anc.saturating_sub(1)));
                 print!(
-                    "{}{}",
-                    // " ".repeat(anc.saturating_sub(anc)),
-                    VERT,
-                    " ".repeat(anc.saturating_sub(1))
+                    "{}",
+                    " ".repeat(anc.saturating_sub(e.ancestor.depth.saturating_sub(1))),
+                    // VERT,
+                    // " ".repeat(anc.saturating_sub(1))
                 );
             }
         }

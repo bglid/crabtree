@@ -42,6 +42,8 @@ pub struct TreeEntry {
     pub entrytype: EntryType,
     pub depth: usize,
     pub last_entry: bool,
+    // pub ancestor: Vec<Ancestor>,
+    pub ancestor: Ancestor,
 }
 
 impl Tree {
@@ -204,6 +206,7 @@ impl IntoIterator for Tree {
 pub struct TreeIter {
     stack_list: Vec<(Tree, usize, bool)>,
     stack_path: Vec<Ancestor>,
+    // stack_path: Ancestor,
 }
 
 // Turning treeiter into an actual iterator
@@ -216,16 +219,24 @@ impl Iterator for TreeIter {
         let child_len: usize = tree.children.len();
         // push the children back on the stack
         for (i, child) in tree.children.into_iter().rev().enumerate() {
-            let last: bool = (child_len <= i + 1);
-            // dbg!(&last);
+            let last: bool = (i == 0);
+            let anc = Ancestor {
+                has_sibling: !last,
+                depth,
+            };
             self.stack_list.push((child, depth + 1, last));
+            self.stack_path.push(anc);
         }
+
+        let ancestor = self.stack_path.pop()?;
 
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
             entrytype: tree.etype,
             last_entry: is_last,
+            // ancestor: self.stack_path,
+            ancestor,
         }))
     }
 }
@@ -238,13 +249,27 @@ impl fmt::Debug for TreeEntry {
 
 /// Ancestor for tracking previous entries
 #[derive(Debug)]
-struct Ancestor {
-    path: PathBuf,
+pub struct Ancestor {
+    // path: PathBuf,
+    pub has_sibling: bool,
+    pub depth: usize,
 }
 
 impl Ancestor {
     fn new(entry: TreeEntry) -> Result<Self> {
-        Ok(Self { path: entry.path })
+        Ok(Self {
+            // path: entry.path,
+            has_sibling: entry.last_entry,
+            depth: entry.depth,
+        })
+    }
+
+    fn build_anc(path: PathBuf, has_sibling: bool, depth: usize) -> Result<Self> {
+        Ok(Self {
+            // path,
+            has_sibling,
+            depth,
+        })
     }
 }
 
