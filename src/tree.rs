@@ -41,7 +41,6 @@ pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
     pub depth: usize,
-    pub ancestors: usize, // needed for viz
     pub last_entry: bool,
 }
 
@@ -193,7 +192,7 @@ impl IntoIterator for Tree {
 
     fn into_iter(self) -> TreeIter {
         TreeIter {
-            stack_list: vec![(self, 0, false, 0)],
+            stack_list: vec![(self, 0, false)],
             stack_path: vec![],
             // min_depth: self.min_depth
             // max_depth: self.max_depth
@@ -203,7 +202,7 @@ impl IntoIterator for Tree {
 
 #[derive(Debug)]
 pub struct TreeIter {
-    stack_list: Vec<(Tree, usize, bool, usize)>,
+    stack_list: Vec<(Tree, usize, bool)>,
     stack_path: Vec<Ancestor>,
 }
 
@@ -212,22 +211,14 @@ impl Iterator for TreeIter {
     type Item = Result<TreeEntry>;
 
     fn next(&mut self) -> Option<Result<TreeEntry>> {
-        let (tree, depth, is_last, ancestors) = self.stack_list.pop()?;
+        let (tree, depth, is_last) = self.stack_list.pop()?;
 
         let child_len: usize = tree.children.len();
         // push the children back on the stack
         for (i, child) in tree.children.into_iter().rev().enumerate() {
-            let check: usize = &i + 1;
-            let sib: bool = (child_len > check);
-            if i == 0 {
-                self.stack_list
-                    .push((child, depth + 1, true, ancestors + 1));
-            } else if sib {
-                self.stack_list
-                    .push((child, depth + 1, false, ancestors + 1));
-            } else {
-                self.stack_list.push((child, depth + 1, false, ancestors));
-            }
+            let last: bool = (child_len <= i + 1);
+            // dbg!(&last);
+            self.stack_list.push((child, depth + 1, last));
         }
 
         Some(Ok(TreeEntry {
@@ -235,7 +226,6 @@ impl Iterator for TreeIter {
             depth,
             entrytype: tree.etype,
             last_entry: is_last,
-            ancestors,
         }))
     }
 }

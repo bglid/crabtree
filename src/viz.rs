@@ -36,10 +36,16 @@ impl TreePart {
             if anc == 0 {
                 continue;
             }
-            if anc <= e.ancestors {
-                print!("{}{}", " ".repeat(anc), VERT);
+            if !e.last_entry {
+                print!("{}{}", " ".repeat(anc.saturating_sub(1)), VERT);
             } else {
-                print!("{}", "  ".repeat(anc));
+                // print!("{}{}{}", "  ".repeat(anc.saturating_sub(1)));
+                print!(
+                    "{}{}",
+                    // " ".repeat(anc.saturating_sub(anc)),
+                    VERT,
+                    " ".repeat(anc.saturating_sub(1))
+                );
             }
         }
     }
@@ -51,7 +57,7 @@ impl TreePart {
                     self.print_ancestors(e);
                     println!(
                         "{}{}{}{}/",
-                        " ".repeat(e.depth),
+                        " ".repeat(e.depth.saturating_sub(1)),
                         BRANCH,
                         HOR,
                         e.path.display()
@@ -64,7 +70,7 @@ impl TreePart {
                 self.print_ancestors(e);
                 println!(
                     "{}{}{}{}",
-                    " ".repeat(e.depth),
+                    " ".repeat(e.depth.saturating_sub(1)),
                     BRANCH,
                     HOR,
                     e.path.display()
@@ -72,7 +78,13 @@ impl TreePart {
             }
             FinalFile => {
                 self.print_ancestors(e);
-                println!("{}{}{}{}", " ".repeat(e.depth), LEAF, HOR, e.path.display())
+                println!(
+                    "{}{}{}{}",
+                    " ".repeat(e.depth.saturating_sub(1)),
+                    LEAF,
+                    HOR,
+                    e.path.display()
+                )
             }
         }
     }
