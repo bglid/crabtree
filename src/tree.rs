@@ -42,8 +42,8 @@ pub struct TreeEntry {
     pub entrytype: EntryType,
     pub depth: usize,
     pub last_entry: bool,
-    // pub ancestor: Vec<Ancestor>,
-    pub ancestor: Ancestor,
+    pub ancestor_has_sib: Vec<bool>, // pub ancestor: Vec<Ancestor>,
+                                     // pub ancestor: Ancestor,
 }
 
 impl Tree {
@@ -194,8 +194,8 @@ impl IntoIterator for Tree {
 
     fn into_iter(self) -> TreeIter {
         TreeIter {
-            stack_list: vec![(self, 0, false)],
-            stack_path: vec![],
+            stack_list: vec![(self, 0, false, vec![])],
+            // ancestor_sibling: vec![],
             // min_depth: self.min_depth
             // max_depth: self.max_depth
         }
@@ -204,8 +204,8 @@ impl IntoIterator for Tree {
 
 #[derive(Debug)]
 pub struct TreeIter {
-    stack_list: Vec<(Tree, usize, bool)>,
-    stack_path: Vec<Ancestor>,
+    stack_list: Vec<(Tree, usize, bool, Vec<bool>)>,
+    // ancestor_sibling: Vec<bool>,
     // stack_path: Ancestor,
 }
 
@@ -214,29 +214,27 @@ impl Iterator for TreeIter {
     type Item = Result<TreeEntry>;
 
     fn next(&mut self) -> Option<Result<TreeEntry>> {
-        let (tree, depth, is_last) = self.stack_list.pop()?;
+        let (tree, depth, is_last, anc_sib) = self.stack_list.pop()?;
 
         let child_len: usize = tree.children.len();
         // push the children back on the stack
         for (i, child) in tree.children.into_iter().rev().enumerate() {
             let last: bool = (i == 0);
-            let anc = Ancestor {
-                has_sibling: !last,
-                depth,
-            };
-            self.stack_list.push((child, depth + 1, last));
-            self.stack_path.push(anc);
+            // creating new sibling vector to chain down
+            let new_anc_sib = anc_sib
+                .iter()
+                .copied()
+                .chain(std::iter::once(!is_last))
+                .collect();
+            self.stack_list.push((child, depth + 1, last, new_anc_sib));
         }
-
-        let ancestor = self.stack_path.pop()?;
 
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
             entrytype: tree.etype,
             last_entry: is_last,
-            // ancestor: self.stack_path,
-            ancestor,
+            ancestor_has_sib: anc_sib,
         }))
     }
 }
