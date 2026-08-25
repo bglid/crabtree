@@ -1,10 +1,7 @@
-#![allow(unused)]
-
 use anyhow::{Ok, Result};
 use std::{
-    error::Error,
     fmt,
-    fs::{self, FileType, ReadDir, metadata},
+    fs::{self, FileType},
     path::{Path, PathBuf},
 };
 
@@ -205,8 +202,6 @@ impl IntoIterator for Tree {
 #[derive(Debug)]
 pub struct TreeIter {
     stack_list: Vec<(Tree, usize, bool, Vec<bool>)>,
-    // ancestor_sibling: Vec<bool>,
-    // stack_path: Ancestor,
 }
 
 // Turning treeiter into an actual iterator
@@ -216,10 +211,9 @@ impl Iterator for TreeIter {
     fn next(&mut self) -> Option<Result<TreeEntry>> {
         let (tree, depth, is_last, anc_sib) = self.stack_list.pop()?;
 
-        let child_len: usize = tree.children.len();
         // push the children back on the stack
         for (i, child) in tree.children.into_iter().rev().enumerate() {
-            let last: bool = (i == 0);
+            let last: bool = i == 0;
             // creating new sibling vector to chain down
             let new_anc_sib = anc_sib
                 .iter()
@@ -245,31 +239,31 @@ impl fmt::Debug for TreeEntry {
     }
 }
 
-/// Ancestor for tracking previous entries
-#[derive(Debug)]
-pub struct Ancestor {
-    // path: PathBuf,
-    pub has_sibling: bool,
-    pub depth: usize,
-}
+// /// Ancestor for tracking previous entries
+// #[derive(Debug)]
+// pub struct Ancestor {
+//     // path: PathBuf,
+//     pub has_sibling: bool,
+//     pub depth: usize,
+// }
 
-impl Ancestor {
-    fn new(entry: TreeEntry) -> Result<Self> {
-        Ok(Self {
-            // path: entry.path,
-            has_sibling: entry.last_entry,
-            depth: entry.depth,
-        })
-    }
-
-    fn build_anc(path: PathBuf, has_sibling: bool, depth: usize) -> Result<Self> {
-        Ok(Self {
-            // path,
-            has_sibling,
-            depth,
-        })
-    }
-}
+// impl Ancestor {
+//     fn new(entry: TreeEntry) -> Result<Self> {
+//         Ok(Self {
+//             // path: entry.path,
+//             has_sibling: entry.last_entry,
+//             depth: entry.depth,
+//         })
+//     }
+//
+//     fn build_anc(path: PathBuf, has_sibling: bool, depth: usize) -> Result<Self> {
+//         Ok(Self {
+//             // path,
+//             has_sibling,
+//             depth,
+//         })
+//     }
+// }
 
 // these tests are trash atm
 #[cfg(test)]
