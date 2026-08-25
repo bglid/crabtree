@@ -32,16 +32,31 @@ impl TreePart {
     }
 
     fn print_ancestors(&self, e: &TreeEntry) {
-        for anc in 0..e.depth {
-            if anc == 0 {
-                continue;
-            }
-            if e.ancestor_has_sib[anc] {
-                print!("{}{}", VERT, " ".repeat(e.depth.saturating_sub(anc)),);
-            } else {
-                print!("{}", " ".repeat(e.depth.saturating_sub(anc)),);
-            }
-        }
+        // for anc in 0..e.ancestor_has_sib.len() {
+        //     if anc == 0 {
+        //         continue;
+        //     }
+        //     if e.ancestor_has_sib[anc] {
+        //         print!("{}{}", VERT, " ".repeat(e.depth.saturating_sub(anc)),);
+        //     } else {
+        //         print!("{}", " ".repeat(e.depth.saturating_sub(anc)),);
+        //     }
+        // }
+        let res: String = e
+            .ancestor_has_sib
+            .iter()
+            .skip(1)
+            .map(|has_sib| {
+                // let indent = String::from(" ");
+                if *has_sib {
+                    format!("{}{}", VERT, " ")
+                } else {
+                    "  ".to_string()
+                }
+            })
+            .collect();
+
+        print!("{}", res)
     }
 
     fn print_tree_part(&self, e: &TreeEntry) {
