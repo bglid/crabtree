@@ -1,10 +1,7 @@
-#![allow(unused)]
-
 use anyhow::{Ok, Result};
 use std::{
-    error::Error,
     fmt,
-    fs::{self, FileType, ReadDir, metadata},
+    fs::{self, FileType},
     path::{Path, PathBuf},
 };
 
@@ -37,11 +34,13 @@ impl From<FileType> for EntryType {
     }
 }
 
-// #[derive(Debug)]
 pub struct TreeEntry {
     pub path: PathBuf,
     pub entrytype: EntryType,
     pub depth: usize,
+    pub last_entry: bool,
+    pub ancestor_has_sib: Vec<bool>, // pub ancestor: Vec<Ancestor>,
+                                     // pub ancestor: Ancestor,
 }
 
 impl Tree {
@@ -192,14 +191,17 @@ impl IntoIterator for Tree {
 
     fn into_iter(self) -> TreeIter {
         TreeIter {
-            stack_list: vec![(self, 0)],
+            stack_list: vec![(self, 0, false, vec![])],
+            // ancestor_sibling: vec![],
+            // min_depth: self.min_depth
+            // max_depth: self.max_depth
         }
     }
 }
 
 #[derive(Debug)]
 pub struct TreeIter {
-    stack_list: Vec<(Tree, usize)>,
+    stack_list: Vec<(Tree, usize, bool, Vec<bool>)>,
 }
 
 // Turning treeiter into an actual iterator
@@ -207,17 +209,26 @@ impl Iterator for TreeIter {
     type Item = Result<TreeEntry>;
 
     fn next(&mut self) -> Option<Result<TreeEntry>> {
-        let (tree, depth) = self.stack_list.pop()?;
+        let (tree, depth, is_last, anc_sib) = self.stack_list.pop()?;
 
         // push the children back on the stack
-        for child in tree.children.into_iter().rev() {
-            self.stack_list.push((child, depth + 1));
+        for (i, child) in tree.children.into_iter().rev().enumerate() {
+            let last: bool = i == 0;
+            // creating new sibling vector to chain down
+            let new_anc_sib = anc_sib
+                .iter()
+                .copied()
+                .chain(std::iter::once(!is_last))
+                .collect();
+            self.stack_list.push((child, depth + 1, last, new_anc_sib));
         }
 
         Some(Ok(TreeEntry {
             path: tree.root,
             depth,
             entrytype: tree.etype,
+            last_entry: is_last,
+            ancestor_has_sib: anc_sib,
         }))
     }
 }
@@ -227,6 +238,32 @@ impl fmt::Debug for TreeEntry {
         write!(f, "TreeEntry::{:?} => ({:?})", self.entrytype, self.path)
     }
 }
+
+// /// Ancestor for tracking previous entries
+// #[derive(Debug)]
+// pub struct Ancestor {
+//     // path: PathBuf,
+//     pub has_sibling: bool,
+//     pub depth: usize,
+// }
+
+// impl Ancestor {
+//     fn new(entry: TreeEntry) -> Result<Self> {
+//         Ok(Self {
+//             // path: entry.path,
+//             has_sibling: entry.last_entry,
+//             depth: entry.depth,
+//         })
+//     }
+//
+//     fn build_anc(path: PathBuf, has_sibling: bool, depth: usize) -> Result<Self> {
+//         Ok(Self {
+//             // path,
+//             has_sibling,
+//             depth,
+//         })
+//     }
+// }
 
 // these tests are trash atm
 #[cfg(test)]
