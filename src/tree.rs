@@ -44,6 +44,7 @@ pub struct TreeEntry {
 }
 
 impl Tree {
+    #[allow(unused)]
     pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Self {
         Tree {
             root: root.as_ref().to_path_buf(),
@@ -238,32 +239,6 @@ impl fmt::Debug for TreeEntry {
         write!(f, "TreeEntry::{:?} => ({:?})", self.entrytype, self.path)
     }
 }
-
-// /// Ancestor for tracking previous entries
-// #[derive(Debug)]
-// pub struct Ancestor {
-//     // path: PathBuf,
-//     pub has_sibling: bool,
-//     pub depth: usize,
-// }
-
-// impl Ancestor {
-//     fn new(entry: TreeEntry) -> Result<Self> {
-//         Ok(Self {
-//             // path: entry.path,
-//             has_sibling: entry.last_entry,
-//             depth: entry.depth,
-//         })
-//     }
-//
-//     fn build_anc(path: PathBuf, has_sibling: bool, depth: usize) -> Result<Self> {
-//         Ok(Self {
-//             // path,
-//             has_sibling,
-//             depth,
-//         })
-//     }
-// }
 
 // these tests are trash atm
 #[cfg(test)]

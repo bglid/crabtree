@@ -14,7 +14,6 @@ use crate::tree::Tree;
 fn main() -> ExitCode {
     let args = Cli::parse();
 
-    println!("Searching...");
     run(args).unwrap_or_else(|err| {
         eprintln!("Error, {}", err);
         ExitCode::FAILURE
