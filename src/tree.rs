@@ -80,50 +80,19 @@ impl Tree {
         };
         // Symlink check, all else are good due to check above
         match entry_type {
-            EntryType::SymL => {
-                return Tree {
-                    root: maybe_new_root,
-                    etype: entry_type,
-                    children: Vec::new(),
-                    symlink: true,
-                };
-            }
-            _ => {
-                return Tree {
-                    root: maybe_new_root,
-                    etype: entry_type,
-                    children: Vec::new(),
-                    symlink: false,
-                };
-            } // EntryType::File => {
-              //     match p {
-              //         Some(f) => {
-              //             return Tree {
-              //                 root: PathBuf::from(f),
-              //                 children: Vec::new(),
-              //                 etype: entry_type,
-              //                 symlink: false,
-              //             };
-              //         }
-              //         None => {
-              //             println!("Error getting filename");
-              //             return Tree {
-              //                 root,
-              //                 children: Vec::new(),
-              //                 etype: entry_type,
-              //                 symlink: false,
-              //             };
-              //         }
-              //     };
-              // }
-              // EntryType::Dir => println!("Trying to get pathbuf from dir..."),
-              // EntryType::Other => println!("Trying to get pathbuf from something else?"),
+            EntryType::SymL => Tree {
+                root: maybe_new_root,
+                etype: entry_type,
+                children: Vec::new(),
+                symlink: true,
+            },
+            _ => Tree {
+                root: maybe_new_root,
+                etype: entry_type,
+                children: Vec::new(),
+                symlink: false,
+            },
         }
-        // Tree {
-        //     root,
-        //     children: Vec::new(),
-        //     etype: entry_type,
-        // }
     }
 
     fn is_dot(path: &Path) -> bool {
@@ -284,11 +253,17 @@ mod tests {
         Tree::build(path, None)
     }
 
+    fn create_sl_tree() -> Result<Tree> {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/symls");
+        Tree::build(path, None)
+    }
+
     #[test]
     fn traverses_dir() {
         let tree = create_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.root.ends_with("hello.rs")));
         assert!(tree.children.iter().any(|c| c.root.ends_with("subdir")));
+        assert!(tree.children.iter().any(|c| !c.symlink));
     }
 
     #[test]
@@ -301,5 +276,11 @@ mod tests {
                 .iter()
                 .any(|c| c.root.ends_with("dont_look_at_me.rs"))
         );
+    }
+
+    #[test]
+    fn handles_symlinks() {
+        let tree = create_sl_tree().unwrap();
+        assert!(tree.children.iter().any(|c| c.symlink));
     }
 }
