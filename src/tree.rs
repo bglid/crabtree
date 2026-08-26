@@ -1,7 +1,7 @@
 use anyhow::{Ok, Result};
 use std::{
     fmt,
-    fs::{self, FileType, metadata},
+    fs::{self, FileType},
     path::{Path, PathBuf},
 };
 
@@ -159,7 +159,6 @@ impl Tree {
         ignore_flag: Option<Vec<String>>,
     ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
-        let syml: bool = ty == EntryType::SymL;
         if Self::is_dot(&root) {
             return Self::return_last_path(root, Vec::new(), ty);
         };
@@ -173,17 +172,8 @@ impl Tree {
         let children = Self::get_children(&root, ignore_flag);
 
         // handles just returning last dir
-        if ty == EntryType::Dir {
-            return Self::return_last_path(root, children?, ty);
-        }
-
-        // build and return full tree
-        Ok(Self {
-            root,
-            children: children?,
-            etype: ty,
-            symlink: syml,
-        })
+        // NOTE: Should only ever be dir beause checked prior to calling
+        Self::return_last_path(root, children?, ty)
     }
 }
 
