@@ -1,7 +1,7 @@
 use anyhow::{Ok, Result};
 use std::{
     fmt,
-    fs::{self, FileType},
+    fs::{self, FileType, metadata},
     path::{Path, PathBuf},
 };
 
@@ -10,6 +10,7 @@ pub struct Tree {
     pub root: PathBuf,
     pub etype: EntryType,
     pub children: Vec<Tree>,
+    symlink: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,56 +46,84 @@ pub struct TreeEntry {
 
 impl Tree {
     #[allow(unused)]
-    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Self {
-        Tree {
+    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Result<Self> {
+        // NOTE: DOESNT FOLLOW SYMLINKS
+        let metadata = fs::symlink_metadata(&root)?;
+        Ok(Tree {
             root: root.as_ref().to_path_buf(),
             children: { Vec::new() },
             etype: entry_type,
-        }
-    }
-
-    /// Handles pathbuf and turns to path, returning the final file
-    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
-        match entry_type {
-            EntryType::File => {
-                let p = root.file_name();
-                match p {
-                    Some(f) => {
-                        return Tree {
-                            root: PathBuf::from(f),
-                            children: Vec::new(),
-                            etype: entry_type,
-                        };
-                    }
-                    None => {
-                        println!("Error getting filename");
-                        return Tree {
-                            root,
-                            children: Vec::new(),
-                            etype: entry_type,
-                        };
-                    }
-                };
-            }
-            EntryType::Dir => println!("Trying to get pathbuf from dir..."),
-            EntryType::SymL => println!("Trying to get pathbuf from symlink..."),
-            EntryType::Other => println!("Trying to get pathbuf from something else?"),
-        }
-        Tree {
-            root,
-            children: Vec::new(),
-            etype: entry_type,
-        }
+            symlink: metadata.file_type().is_symlink(),
+        })
     }
 
     pub fn build<P: AsRef<Path>>(root: P, ignore_flag: Option<Vec<String>>) -> Result<Self> {
-        let metadata = fs::metadata(&root)?;
+        let metadata = fs::symlink_metadata(&root)?;
         let ft = metadata.file_type();
         Self::traverse_build(
             root.as_ref().to_path_buf(),
             EntryType::from(ft),
             ignore_flag,
         )
+    }
+
+    /// Handles pathbuf and turns to path, returning the final file
+    // NOTE: This is gross
+    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
+        let p = root.file_name();
+        let maybe_new_root: PathBuf = match p {
+            Some(f) => PathBuf::from(f),
+            None => {
+                println!("Error getting filename");
+                root
+            }
+        };
+        // Symlink check, all else are good due to check above
+        match entry_type {
+            EntryType::SymL => {
+                return Tree {
+                    root: maybe_new_root,
+                    etype: entry_type,
+                    children: Vec::new(),
+                    symlink: true,
+                };
+            }
+            _ => {
+                return Tree {
+                    root: maybe_new_root,
+                    etype: entry_type,
+                    children: Vec::new(),
+                    symlink: false,
+                };
+            } // EntryType::File => {
+              //     match p {
+              //         Some(f) => {
+              //             return Tree {
+              //                 root: PathBuf::from(f),
+              //                 children: Vec::new(),
+              //                 etype: entry_type,
+              //                 symlink: false,
+              //             };
+              //         }
+              //         None => {
+              //             println!("Error getting filename");
+              //             return Tree {
+              //                 root,
+              //                 children: Vec::new(),
+              //                 etype: entry_type,
+              //                 symlink: false,
+              //             };
+              //         }
+              //     };
+              // }
+              // EntryType::Dir => println!("Trying to get pathbuf from dir..."),
+              // EntryType::Other => println!("Trying to get pathbuf from something else?"),
+        }
+        // Tree {
+        //     root,
+        //     children: Vec::new(),
+        //     etype: entry_type,
+        // }
     }
 
     fn is_dot(path: &Path) -> bool {
@@ -127,7 +156,7 @@ impl Tree {
                 EntryType::File => {
                     acc.push(Self::from_pathbuf(path, entry_ty));
                 }
-                EntryType::SymL => unimplemented!(),
+                EntryType::SymL => acc.push(Self::new(path, entry_ty)?),
                 EntryType::Other => unimplemented!(),
             }
 
@@ -137,17 +166,20 @@ impl Tree {
 
     // Returns just the last file in a path
     fn return_last_path(root: PathBuf, children: Vec<Self>, ty: EntryType) -> Result<Self> {
+        let syml = ty == EntryType::SymL;
         let Some(os_root) = root.file_name() else {
             return Ok(Self {
                 root,
                 etype: ty,
                 children,
+                symlink: syml,
             });
         };
         Ok(Self {
             root: PathBuf::from(os_root),
             etype: ty,
             children,
+            symlink: syml,
         })
     }
 
@@ -158,6 +190,7 @@ impl Tree {
         ignore_flag: Option<Vec<String>>,
     ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
+        let syml: bool = ty == EntryType::SymL;
         if Self::is_dot(&root) {
             return Self::return_last_path(root, Vec::new(), ty);
         };
@@ -180,6 +213,7 @@ impl Tree {
             root,
             children: children?,
             etype: ty,
+            symlink: syml,
         })
     }
 }
