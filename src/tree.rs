@@ -40,8 +40,8 @@ pub struct TreeEntry {
     pub entrytype: EntryType,
     pub depth: usize,
     pub last_entry: bool,
-    pub ancestor_has_sib: Vec<bool>, // pub ancestor: Vec<Ancestor>,
-                                     // pub ancestor: Ancestor,
+    pub symlink: bool,
+    pub ancestor_has_sib: Vec<bool>,
 }
 
 impl Tree {
@@ -125,6 +125,7 @@ impl Tree {
                 EntryType::File => {
                     acc.push(Self::from_pathbuf(path, entry_ty));
                 }
+                // EntryType::SymL => acc.push(Self::from_pathbuf(path, entry_ty)),
                 EntryType::SymL => acc.push(Self::new(path, entry_ty)?),
                 EntryType::Other => unimplemented!(),
             }
@@ -223,6 +224,7 @@ impl Iterator for TreeIter {
             entrytype: tree.etype,
             last_entry: is_last,
             ancestor_has_sib: anc_sib,
+            symlink: tree.symlink,
         }))
     }
 }

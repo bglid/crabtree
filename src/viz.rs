@@ -1,3 +1,5 @@
+use std::{fs, path::PathBuf};
+
 use crate::{
     tree::{Tree, TreeEntry},
     viz::TreePart::{FinalEnt, NormalEnt},
@@ -40,8 +42,17 @@ impl TreePart {
         print!("{}", res)
     }
 
+    fn format_symlink(&self, e: &TreeEntry) -> String {
+        let link = fs::read_link(&e.path).unwrap();
+        format!(" -> {}", link.display())
+    }
+
     fn print_tree_line(&self, e: &TreeEntry, tree_char: char) {
-        println!("{}{}{}", tree_char, HOR, e.path.display())
+        let mut buffer = format!("{}{}{}", tree_char, HOR, e.path.display());
+        if e.symlink {
+            buffer.push_str(&self.format_symlink(e));
+        }
+        println!("{}", buffer);
     }
 
     fn print_tree_part(&self, e: &TreeEntry) {
