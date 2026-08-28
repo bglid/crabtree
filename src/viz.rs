@@ -50,7 +50,15 @@ impl TreePart {
     fn print_tree_line(&self, e: &TreeEntry, tree_char: char) {
         let mut buffer = format!("{}{}{}", tree_char, HOR, e.path.display());
         if e.symlink {
-            buffer.push_str(&self.format_symlink(e));
+            buffer.clear();
+            buffer = format!(
+                "{}{}{}{}",
+                tree_char,
+                HOR,
+                PathBuf::from((e.path).file_name().unwrap_or_else(|| e.path.as_os_str())).display(),
+                self.format_symlink(e),
+            );
+            // buffer.push_str(&self.format_symlink(e));
         }
         println!("{}", buffer);
     }
