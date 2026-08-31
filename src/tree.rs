@@ -10,6 +10,7 @@ pub struct Tree {
     pub root: PathBuf,
     pub etype: EntryType,
     pub children: Vec<Tree>,
+    symlink: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -39,62 +40,59 @@ pub struct TreeEntry {
     pub entrytype: EntryType,
     pub depth: usize,
     pub last_entry: bool,
-    pub ancestor_has_sib: Vec<bool>, // pub ancestor: Vec<Ancestor>,
-                                     // pub ancestor: Ancestor,
+    pub symlink: bool,
+    pub ancestor_has_sib: Vec<bool>,
 }
 
 impl Tree {
     #[allow(unused)]
-    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Self {
-        Tree {
+    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Result<Self> {
+        // NOTE: DOESNT FOLLOW SYMLINKS
+        let metadata = fs::symlink_metadata(&root)?;
+        Ok(Tree {
             root: root.as_ref().to_path_buf(),
             children: { Vec::new() },
             etype: entry_type,
-        }
-    }
-
-    /// Handles pathbuf and turns to path, returning the final file
-    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
-        match entry_type {
-            EntryType::File => {
-                let p = root.file_name();
-                match p {
-                    Some(f) => {
-                        return Tree {
-                            root: PathBuf::from(f),
-                            children: Vec::new(),
-                            etype: entry_type,
-                        };
-                    }
-                    None => {
-                        println!("Error getting filename");
-                        return Tree {
-                            root,
-                            children: Vec::new(),
-                            etype: entry_type,
-                        };
-                    }
-                };
-            }
-            EntryType::Dir => println!("Trying to get pathbuf from dir..."),
-            EntryType::SymL => println!("Trying to get pathbuf from symlink..."),
-            EntryType::Other => println!("Trying to get pathbuf from something else?"),
-        }
-        Tree {
-            root,
-            children: Vec::new(),
-            etype: entry_type,
-        }
+            symlink: metadata.file_type().is_symlink(),
+        })
     }
 
     pub fn build<P: AsRef<Path>>(root: P, ignore_flag: Option<Vec<String>>) -> Result<Self> {
-        let metadata = fs::metadata(&root)?;
+        let metadata = fs::symlink_metadata(&root)?;
         let ft = metadata.file_type();
         Self::traverse_build(
             root.as_ref().to_path_buf(),
             EntryType::from(ft),
             ignore_flag,
         )
+    }
+
+    /// Handles pathbuf and turns to path, returning the final file
+    // NOTE: This is gross
+    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
+        let p = root.file_name();
+        let maybe_new_root: PathBuf = match p {
+            Some(f) => PathBuf::from(f),
+            None => {
+                println!("Error getting filename");
+                root
+            }
+        };
+        // Symlink check, all else are good due to check above
+        match entry_type {
+            EntryType::SymL => Tree {
+                root: maybe_new_root,
+                etype: entry_type,
+                children: Vec::new(),
+                symlink: true,
+            },
+            _ => Tree {
+                root: maybe_new_root,
+                etype: entry_type,
+                children: Vec::new(),
+                symlink: false,
+            },
+        }
     }
 
     fn is_dot(path: &Path) -> bool {
@@ -127,7 +125,8 @@ impl Tree {
                 EntryType::File => {
                     acc.push(Self::from_pathbuf(path, entry_ty));
                 }
-                EntryType::SymL => unimplemented!(),
+                // EntryType::SymL => acc.push(Self::from_pathbuf(path, entry_ty)),
+                EntryType::SymL => acc.push(Self::new(path, entry_ty)?),
                 EntryType::Other => unimplemented!(),
             }
 
@@ -137,17 +136,20 @@ impl Tree {
 
     // Returns just the last file in a path
     fn return_last_path(root: PathBuf, children: Vec<Self>, ty: EntryType) -> Result<Self> {
+        let syml = ty == EntryType::SymL;
         let Some(os_root) = root.file_name() else {
             return Ok(Self {
                 root,
                 etype: ty,
                 children,
+                symlink: syml,
             });
         };
         Ok(Self {
             root: PathBuf::from(os_root),
             etype: ty,
             children,
+            symlink: syml,
         })
     }
 
@@ -171,16 +173,8 @@ impl Tree {
         let children = Self::get_children(&root, ignore_flag);
 
         // handles just returning last dir
-        if ty == EntryType::Dir {
-            return Self::return_last_path(root, children?, ty);
-        }
-
-        // build and return full tree
-        Ok(Self {
-            root,
-            children: children?,
-            etype: ty,
-        })
+        // NOTE: Should only ever be dir beause checked prior to calling
+        Self::return_last_path(root, children?, ty)
     }
 }
 
@@ -230,6 +224,7 @@ impl Iterator for TreeIter {
             entrytype: tree.etype,
             last_entry: is_last,
             ancestor_has_sib: anc_sib,
+            symlink: tree.symlink,
         }))
     }
 }
@@ -250,11 +245,17 @@ mod tests {
         Tree::build(path, None)
     }
 
+    fn create_sl_tree() -> Result<Tree> {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/symls");
+        Tree::build(path, None)
+    }
+
     #[test]
     fn traverses_dir() {
         let tree = create_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.root.ends_with("hello.rs")));
         assert!(tree.children.iter().any(|c| c.root.ends_with("subdir")));
+        assert!(tree.children.iter().any(|c| !c.symlink));
     }
 
     #[test]
@@ -267,5 +268,11 @@ mod tests {
                 .iter()
                 .any(|c| c.root.ends_with("dont_look_at_me.rs"))
         );
+    }
+
+    #[test]
+    fn handles_symlinks() {
+        let tree = create_sl_tree().unwrap();
+        assert!(tree.children.iter().any(|c| c.symlink));
     }
 }
