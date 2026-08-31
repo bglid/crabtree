@@ -16,12 +16,15 @@ crabtree
 ├── target
 ├── .gitignore
 ├── tests
-│   └── fixtures
-│       └── tree
-│           ├── hello.rs
-│           ├── .im_hiding
-│           └── subdir
-│               └── hello2.rs
+│   ├── fixtures
+│   │   └── tree
+│   │       ├── hello.rs
+│   │       ├── .im_hiding
+│   │       └── subdir
+│   │           └── hello2.rs
+│   └── symls
+│       ├── link.md -> ../../README.md
+│       └── src_link -> ../../src
 ├── Cargo.lock
 ├── src
 │   ├── viz.rs
@@ -49,9 +52,9 @@ src
 #### Future Goals (in order):
  - Package as a crate
  - Refactor with better practices
- - Handling symlinks
+ - ~Handling symlinks~
  - Implement CLI natively
  - Adding more args for max & min depth
- - Better formatting and visualization
+ - Better formatting and visualization (icons etc.)
 
 - - - 
