@@ -6,3 +6,33 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 clap = { version = "4.6.4", features = ["derive"] }
+
+# clippy!
+[lints.clippy]
+pedantic = {level = "warn", priority = -1}
+restriction = {level = "warn", priority = -1}
+blanket_clippy_restriction_lints = "allow"
+allow_attributes = "allow"
+
+arithmetic_side_effects = "allow" 
+float_arithmetic = "allow" 
+implicit_return = "allow" 
+must_use_candidate = "allow" 
+single_call_fn = "allow" 
+question_mark_used = "allow" 
+absolute_paths = "allow" 
+arbitrary_source_item_ordering = "allow"
+missing_trait_methods = "allow" 
+single_char_lifetime_names = "allow" 
+
+min_ident_chars = "allow" 
+shadow_reuse = "allow" 
+default_numeric_fallback = "allow" 
+separated_literal_suffix = "allow"
+pub_use = "allow" 
+mod_module_files = "allow" 
+let_underscore_untyped = "allow" 
+
+missing_inline_in_public_items = "allow" 
+
+inline_modules = "allow"
