@@ -10,7 +10,7 @@ pub struct Tree {
     pub root: PathBuf,
     pub etype: EntryType,
     pub children: Vec<Tree>,
-    symlink: bool,
+    pub symlink: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -21,6 +21,10 @@ pub enum EntryType {
     Other,
 }
 
+#[allow(
+    clippy::filetype_is_file,
+    reason = "Needs to check for file and not rule out symlink"
+)]
 impl From<FileType> for EntryType {
     fn from(value: FileType) -> Self {
         if value.is_dir() {
@@ -45,8 +49,10 @@ pub struct TreeEntry {
 }
 
 impl Tree {
-    #[allow(unused)]
-    pub fn new<P: AsRef<Path>>(root: P, entry_type: EntryType) -> Result<Self> {
+    pub fn new<P>(root: P, entry_type: EntryType) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
         // NOTE: DOESNT FOLLOW SYMLINKS
         let metadata = fs::symlink_metadata(&root)?;
         Ok(Tree {
@@ -57,7 +63,10 @@ impl Tree {
         })
     }
 
-    pub fn build<P: AsRef<Path>>(root: P, ignore_flag: Option<Vec<String>>) -> Result<Self> {
+    pub fn build<P>(root: P, ignore_flag: Option<&Vec<String>>) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
         let metadata = fs::symlink_metadata(&root)?;
         let ft = metadata.file_type();
         Self::traverse_build(
@@ -67,16 +76,13 @@ impl Tree {
         )
     }
 
-    /// Handles pathbuf and turns to path, returning the final file
-    // NOTE: This is gross
+    /// Handles pathbuf and turns to path, returning the final file.
     pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
         let p = root.file_name();
-        let maybe_new_root: PathBuf = match p {
-            Some(f) => PathBuf::from(f),
-            None => {
-                println!("Error getting filename");
-                root
-            }
+        let maybe_new_root: PathBuf = if let Some(f) = p {
+            PathBuf::from(f)
+        } else {
+            root
         };
         // Symlink check, all else are good due to check above
         match entry_type {
@@ -86,7 +92,7 @@ impl Tree {
                 children: Vec::new(),
                 symlink: true,
             },
-            _ => Tree {
+            EntryType::Dir | EntryType::File | EntryType::Other => Tree {
                 root: maybe_new_root,
                 etype: entry_type,
                 children: Vec::new(),
@@ -98,18 +104,20 @@ impl Tree {
     fn is_dot(path: &Path) -> bool {
         path.file_name()
             .and_then(|name| name.to_str())
-            .map(|s| s.starts_with("."))
-            .unwrap_or_else(|| false)
+            .map_or_else(|| false, |s| s.starts_with('.'))
     }
 
-    fn ignore_dir(path: &Path, ignore_flag: String) -> bool {
+    fn ignore_dir(path: &Path, ignore_flag: &str) -> bool {
+        // path.file_name()
+        //     .and_then(|name| name.to_str())
+        //     .map(|s| s == ignore_flag)
+        //     .unwrap_or_else(|| false)
         path.file_name()
             .and_then(|name| name.to_str())
-            .map(|s| s == ignore_flag)
-            .unwrap_or_else(|| false)
+            .map_or_else(|| false, |s| s == ignore_flag)
     }
 
-    fn get_children(root: &PathBuf, ignore_flag: Option<Vec<String>>) -> Result<Vec<Self>> {
+    fn get_children(root: &PathBuf, ignore_flag: Option<&Vec<String>>) -> Result<Vec<Self>> {
         fs::read_dir(root)?.try_fold(Vec::new(), |mut acc, entry| {
             let entry = entry?;
             // new Entry type for next level
@@ -120,14 +128,16 @@ impl Tree {
             // NOTE: Need to refactor away from clones
             match entry_ty {
                 EntryType::Dir => {
-                    acc.push(Self::traverse_build(path, entry_ty, ignore_flag.clone())?);
+                    acc.push(Self::traverse_build(
+                        path,
+                        entry_ty,
+                        ignore_flag.cloned().as_ref(),
+                    )?);
                 }
                 EntryType::File => {
                     acc.push(Self::from_pathbuf(path, entry_ty));
                 }
-                // EntryType::SymL => acc.push(Self::from_pathbuf(path, entry_ty)),
-                EntryType::SymL => acc.push(Self::new(path, entry_ty)?),
-                EntryType::Other => unimplemented!(),
+                EntryType::SymL | EntryType::Other => acc.push(Self::new(path, entry_ty)?),
             }
 
             Ok(acc)
@@ -157,15 +167,15 @@ impl Tree {
     fn traverse_build(
         root: PathBuf,
         ty: EntryType,
-        ignore_flag: Option<Vec<String>>,
+        ignore_flag: Option<&Vec<String>>,
     ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
         if Self::is_dot(&root) {
             return Self::return_last_path(root, Vec::new(), ty);
-        };
+        }
 
-        if let Some(ref flag) = ignore_flag
-            && flag.iter().any(|f| Self::ignore_dir(&root, f.to_string()))
+        if let Some(flag) = ignore_flag
+            && flag.iter().any(|f| Self::ignore_dir(&root, &f.clone()))
         {
             return Self::return_last_path(root, Vec::new(), ty);
         }
@@ -173,7 +183,6 @@ impl Tree {
         let children = Self::get_children(&root, ignore_flag);
 
         // handles just returning last dir
-        // NOTE: Should only ever be dir beause checked prior to calling
         Self::return_last_path(root, children?, ty)
     }
 }
@@ -251,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used, reason = "test case")]
     fn traverses_dir() {
         let tree = create_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.root.ends_with("hello.rs")));
@@ -259,6 +269,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used, reason = "test case")]
     fn skips_trav_dot_dirs() {
         let tree = create_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.root.ends_with(".im_hiding")));
@@ -271,6 +282,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used, reason = "test case")]
     fn handles_symlinks() {
         let tree = create_sl_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.symlink));

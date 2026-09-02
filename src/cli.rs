@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -6,10 +6,10 @@ use std::path::PathBuf;
 #[command(version, about, long_about = None)]
 pub struct Cli {
     #[arg(short = 'd', long = "directory")]
-    /// Directory to build tree FROM
+    /// Directory to build tree FROM.
     pub directory: Option<PathBuf>,
 
-    /// Directories to ignore
+    /// Directories to ignore.
     #[arg(short = 'i', long = "ignore-dir", num_args = 1.., value_delimiter = ',')]
     pub ignore: Option<Vec<String>>,
 }
