@@ -2,6 +2,7 @@ mod cli;
 mod tree;
 mod viz;
 use anyhow::Result;
+use std::io::{self, Write as _};
 use std::process::ExitCode;
 
 use clap::Parser as _;
@@ -15,7 +16,11 @@ fn main() -> ExitCode {
     let args = Cli::parse();
 
     run(args).unwrap_or_else(|err| {
-        eprintln!("Error, {err}");
+        #[allow(
+            clippy::let_underscore_must_use,
+            reason = "Cannot recover in meaningful way at this point"
+        )]
+        let _ = writeln!(io::stderr(), "{err}");
         ExitCode::FAILURE
     })
 }
@@ -24,7 +29,7 @@ fn run(args: Cli) -> Result<ExitCode> {
     let dir = Cli::resolve_directory(args.directory)?;
     let tree: Tree = Tree::build(dir, args.ignore.as_ref())?;
 
-    visualize_tree(tree);
+    visualize_tree(tree)?;
 
     Ok(ExitCode::SUCCESS)
 }

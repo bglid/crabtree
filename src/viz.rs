@@ -1,9 +1,11 @@
+use std::io::{self, Write as _};
 use std::{fs, path::PathBuf};
 
 use crate::{
     tree::{Tree, TreeEntry},
     viz::TreePart::{FinalEnt, NormalEnt},
 };
+use anyhow::Result;
 
 // better visualizing chars
 const BRANCH: char = '\u{251c}'; // ├
@@ -25,19 +27,20 @@ impl TreePart {
         NormalEnt
     }
 
-    fn print_tree_part(&self, e: &TreeEntry) {
+    fn print_tree_part(&self, e: &TreeEntry) -> Result<()> {
         match *self {
             NormalEnt => {
                 if e.depth > 0 {
-                    print_ancestors(e);
-                    print_tree_line(e, BRANCH);
+                    print_ancestors(e)?;
+                    print_tree_line(e, BRANCH)
                 } else {
-                    println!("{}", e.path.display());
+                    writeln!(io::stdout(), "{}", e.path.display())?;
+                    Ok(())
                 }
             }
             FinalEnt => {
-                print_ancestors(e);
-                print_tree_line(e, LEAF);
+                print_ancestors(e)?;
+                print_tree_line(e, LEAF)
             }
         }
     }
@@ -48,7 +51,7 @@ fn format_symlink(e: &TreeEntry) -> String {
     format!(" -> {}", link.display())
 }
 
-fn print_ancestors(e: &TreeEntry) {
+fn print_ancestors(e: &TreeEntry) -> Result<()> {
     let res: String = e
         .ancestor_has_sib
         .iter()
@@ -62,10 +65,11 @@ fn print_ancestors(e: &TreeEntry) {
         })
         .collect();
 
-    print!("{res}");
+    write!(io::stdout(), "{res}")?;
+    Ok(())
 }
 
-fn print_tree_line(e: &TreeEntry, tree_char: char) {
+fn print_tree_line(e: &TreeEntry, tree_char: char) -> Result<()> {
     let mut buffer = format!("{}{}{}", tree_char, HOR, e.path.display());
     if e.symlink {
         buffer.clear();
@@ -77,15 +81,20 @@ fn print_tree_line(e: &TreeEntry, tree_char: char) {
             format_symlink(e),
         );
     }
-    println!("{buffer}");
+    write!(io::stdout(), "{buffer}")?;
+    Ok(())
 }
 
-pub fn visualize_tree(tree: Tree) {
-    tree.into_iter().for_each(|t_entry| match t_entry {
-        Ok(ent) => {
-            let part = TreePart::resolve_part(&ent);
-            part.print_tree_part(&ent);
+pub fn visualize_tree(tree: Tree) -> Result<()> {
+    for entry in tree {
+        match entry {
+            Ok(ent) => {
+                let part = TreePart::resolve_part(&ent);
+                part.print_tree_part(&ent)?;
+            }
+            // Err(e) => eprintln!("{e}"),
+            Err(e) => writeln!(io::stderr(), "{e}")?,
         }
-        Err(e) => eprintln!("{e}"),
-    });
+    }
+    Ok(())
 }
