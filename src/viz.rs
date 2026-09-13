@@ -81,7 +81,7 @@ fn print_tree_line(e: &TreeEntry, tree_char: char) -> Result<()> {
             format_symlink(e),
         );
     }
-    write!(io::stdout(), "{buffer}")?;
+    writeln!(io::stdout(), "{buffer}")?;
     Ok(())
 }
 
