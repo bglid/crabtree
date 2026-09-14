@@ -5,12 +5,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::cli::Cli;
+
 #[derive(Debug, PartialEq)]
 pub struct Tree {
     pub root: PathBuf,
     pub etype: EntryType,
     pub children: Vec<Tree>,
     pub symlink: bool,
+    // pub max_depth: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -63,7 +66,7 @@ impl Tree {
         })
     }
 
-    pub fn build<P>(root: P, ignore_flag: Option<&Vec<String>>) -> Result<Self>
+    pub fn build<P>(root: P, args: &Cli) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -72,7 +75,7 @@ impl Tree {
         Self::traverse_build(
             root.as_ref().to_path_buf(),
             EntryType::from(ft),
-            ignore_flag,
+            args.ignore.as_ref(),
         )
     }
 
@@ -108,10 +111,6 @@ impl Tree {
     }
 
     fn ignore_dir(path: &Path, ignore_flag: &str) -> bool {
-        // path.file_name()
-        //     .and_then(|name| name.to_str())
-        //     .map(|s| s == ignore_flag)
-        //     .unwrap_or_else(|| false)
         path.file_name()
             .and_then(|name| name.to_str())
             .map_or_else(|| false, |s| s == ignore_flag)
@@ -196,9 +195,7 @@ impl IntoIterator for Tree {
     fn into_iter(self) -> TreeIter {
         TreeIter {
             stack_list: vec![(self, 0, false, vec![])],
-            // ancestor_sibling: vec![],
-            // min_depth: self.min_depth
-            // max_depth: self.max_depth
+            // max_depth: self.max_depth,
         }
     }
 }
@@ -206,6 +203,7 @@ impl IntoIterator for Tree {
 #[derive(Debug)]
 pub struct TreeIter {
     stack_list: Vec<(Tree, usize, bool, Vec<bool>)>,
+    // max_depth: usize,
 }
 
 // Turning treeiter into an actual iterator
@@ -248,15 +246,18 @@ impl fmt::Debug for TreeEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser as _;
 
     fn create_tree() -> Result<Tree> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tree");
-        Tree::build(path, None)
+        let args = Cli::parse();
+        Tree::build(path, &args)
     }
 
     fn create_sl_tree() -> Result<Tree> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/symls");
-        Tree::build(path, None)
+        let args = Cli::parse();
+        Tree::build(path, &args)
     }
 
     #[test]

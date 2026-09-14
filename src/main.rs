@@ -15,7 +15,7 @@ use crate::tree::Tree;
 fn main() -> ExitCode {
     let args = Cli::parse();
 
-    run(args).unwrap_or_else(|err| {
+    run(&args).unwrap_or_else(|err| {
         #[allow(
             clippy::let_underscore_must_use,
             reason = "Cannot recover in meaningful way at this point"
@@ -25,9 +25,9 @@ fn main() -> ExitCode {
     })
 }
 
-fn run(args: Cli) -> Result<ExitCode> {
-    let dir = Cli::resolve_directory(args.directory)?;
-    let tree: Tree = Tree::build(dir, args.ignore.as_ref())?;
+fn run(args: &Cli) -> Result<ExitCode> {
+    let dir = Cli::resolve_directory(args.directory.as_deref())?;
+    let tree: Tree = Tree::build(dir, args)?;
 
     visualize_tree(tree)?;
 
@@ -45,7 +45,7 @@ mod tests {
     fn uses_dir_from_arg() {
         let expected_dir = PathBuf::from("/test/hello");
 
-        let actual = Cli::resolve_directory(Some(expected_dir.clone()))
+        let actual = Cli::resolve_directory(Some(&expected_dir.clone()))
             .expect("Error in resolving directory");
         assert_eq!(actual, expected_dir);
     }
