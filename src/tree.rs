@@ -13,7 +13,7 @@ pub struct Tree {
     pub etype: EntryType,
     pub children: Vec<Tree>,
     pub symlink: bool,
-    // pub max_depth: usize,
+    pub max_depth: Option<usize>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,7 +52,7 @@ pub struct TreeEntry {
 }
 
 impl Tree {
-    pub fn new<P>(root: P, entry_type: EntryType) -> Result<Self>
+    pub fn new<P>(root: P, entry_type: EntryType, max_depth: Option<usize>) -> Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -63,6 +63,7 @@ impl Tree {
             children: { Vec::new() },
             etype: entry_type,
             symlink: metadata.file_type().is_symlink(),
+            max_depth,
         })
     }
 
@@ -76,11 +77,12 @@ impl Tree {
             root.as_ref().to_path_buf(),
             EntryType::from(ft),
             args.ignore.as_ref(),
+            args.max_depth,
         )
     }
 
     /// Handles pathbuf and turns to path, returning the final file.
-    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType) -> Self {
+    pub fn from_pathbuf(root: PathBuf, entry_type: EntryType, max_depth: Option<usize>) -> Self {
         let p = root.file_name();
         let maybe_new_root: PathBuf = if let Some(f) = p {
             PathBuf::from(f)
@@ -94,12 +96,14 @@ impl Tree {
                 etype: entry_type,
                 children: Vec::new(),
                 symlink: true,
+                max_depth,
             },
             EntryType::Dir | EntryType::File | EntryType::Other => Tree {
                 root: maybe_new_root,
                 etype: entry_type,
                 children: Vec::new(),
                 symlink: false,
+                max_depth,
             },
         }
     }
@@ -116,7 +120,11 @@ impl Tree {
             .map_or_else(|| false, |s| s == ignore_flag)
     }
 
-    fn get_children(root: &PathBuf, ignore_flag: Option<&Vec<String>>) -> Result<Vec<Self>> {
+    fn get_children(
+        root: &PathBuf,
+        ignore_flag: Option<&Vec<String>>,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<Self>> {
         fs::read_dir(root)?.try_fold(Vec::new(), |mut acc, entry| {
             let entry = entry?;
             // new Entry type for next level
@@ -131,12 +139,15 @@ impl Tree {
                         path,
                         entry_ty,
                         ignore_flag.cloned().as_ref(),
+                        max_depth,
                     )?);
                 }
                 EntryType::File => {
-                    acc.push(Self::from_pathbuf(path, entry_ty));
+                    acc.push(Self::from_pathbuf(path, entry_ty, max_depth));
                 }
-                EntryType::SymL | EntryType::Other => acc.push(Self::new(path, entry_ty)?),
+                EntryType::SymL | EntryType::Other => {
+                    acc.push(Self::new(path, entry_ty, max_depth)?);
+                }
             }
 
             Ok(acc)
@@ -144,7 +155,12 @@ impl Tree {
     }
 
     // Returns just the last file in a path
-    fn return_last_path(root: PathBuf, children: Vec<Self>, ty: EntryType) -> Result<Self> {
+    fn return_last_path(
+        root: PathBuf,
+        children: Vec<Self>,
+        ty: EntryType,
+        max_depth: Option<usize>,
+    ) -> Result<Self> {
         let syml = ty == EntryType::SymL;
         let Some(os_root) = root.file_name() else {
             return Ok(Self {
@@ -152,6 +168,7 @@ impl Tree {
                 etype: ty,
                 children,
                 symlink: syml,
+                max_depth,
             });
         };
         Ok(Self {
@@ -159,6 +176,7 @@ impl Tree {
             etype: ty,
             children,
             symlink: syml,
+            max_depth,
         })
     }
 
@@ -167,22 +185,23 @@ impl Tree {
         root: PathBuf,
         ty: EntryType,
         ignore_flag: Option<&Vec<String>>,
+        max_depth: Option<usize>,
     ) -> Result<Self> {
         // checking for dotfile or dotdir to skip building the tree
         if Self::is_dot(&root) {
-            return Self::return_last_path(root, Vec::new(), ty);
+            return Self::return_last_path(root, Vec::new(), ty, max_depth);
         }
 
         if let Some(flag) = ignore_flag
             && flag.iter().any(|f| Self::ignore_dir(&root, &f.clone()))
         {
-            return Self::return_last_path(root, Vec::new(), ty);
+            return Self::return_last_path(root, Vec::new(), ty, max_depth);
         }
 
-        let children = Self::get_children(&root, ignore_flag);
+        let children = Self::get_children(&root, ignore_flag, max_depth);
 
         // handles just returning last dir
-        Self::return_last_path(root, children?, ty)
+        Self::return_last_path(root, children?, ty, max_depth)
     }
 }
 
@@ -194,8 +213,8 @@ impl IntoIterator for Tree {
 
     fn into_iter(self) -> TreeIter {
         TreeIter {
+            max_depth: self.max_depth,
             stack_list: vec![(self, 0, false, vec![])],
-            // max_depth: self.max_depth,
         }
     }
 }
@@ -203,7 +222,7 @@ impl IntoIterator for Tree {
 #[derive(Debug)]
 pub struct TreeIter {
     stack_list: Vec<(Tree, usize, bool, Vec<bool>)>,
-    // max_depth: usize,
+    max_depth: Option<usize>,
 }
 
 // Turning treeiter into an actual iterator
@@ -215,6 +234,12 @@ impl Iterator for TreeIter {
 
         // push the children back on the stack
         for (i, child) in tree.children.into_iter().rev().enumerate() {
+            if let Some(d) = self.max_depth
+                && d == depth
+            {
+                break;
+            }
+
             let last: bool = i == 0;
             // creating new sibling vector to chain down
             let new_anc_sib = anc_sib
