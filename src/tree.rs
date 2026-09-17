@@ -313,4 +313,14 @@ mod tests {
         let tree = create_sl_tree().unwrap();
         assert!(tree.children.iter().any(|c| c.symlink));
     }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test case")]
+    fn max_depth_test() {
+        let mut tree = create_tree().unwrap();
+        tree.max_depth = Some(1);
+        assert!(tree.children.iter().any(|c| c.root.ends_with("hello.rs")));
+        assert!(tree.children.iter().any(|c| c.root.ends_with("subdir")));
+        assert!(tree.children.iter().any(|c| !c.symlink));
+    }
 }

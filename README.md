@@ -1,8 +1,8 @@
-# crabtree 
+# crabtree
 
-A reimplementation of the Linux `tree` command, in Rust. First full undirected Rust project. 
+A reimplementation of the Linux `tree` command, in Rust. First full undirected Rust project.
 
-- - - 
+---
 
 #### Basic usage
 
@@ -34,10 +34,11 @@ crabtree
 └── .git
 ```
 
-With no args passed to it, it will print everything in the current directory. 
+With no args passed to it, it will print everything in the current directory.
 
 To print out the tree of a selective directory, you can use the `-d` flag
-```bash 
+
+```bash
 # -i is still an option here
 ~/crabtree   cargo run -q -- -d src
 src
@@ -47,14 +48,14 @@ src
 └─tree.rs
 ```
 
-- - - 
+To control the depth, you can pass `--max-depth <int>` as an arg.
+
+---
 
 #### Future Goals (in order):
- - Package as a crate
- - Refactor with better practices
- - ~Handling symlinks~
- - Implement CLI natively
- - Adding more args for max & min depth
- - Better formatting and visualization (icons etc.)
 
-- - - 
+- Implement CLI natively
+- Better formatting and visualization (icons etc.)
+- Package as a crate
+
+---
